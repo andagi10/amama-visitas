@@ -79,6 +79,9 @@ const COLORS = [
   {dot:'#888780',bg:'#F1EFE8',text:'#444441'}
 ];
 
+const ADMIN_NAME = 'Ander';
+const ADMIN_PASS = 'agirrezabal'; // cámbiala aquí
+
 // ── LOCAL DATE HELPERS (no UTC drift) ──────────────────────────────
 function localDs(d) {
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -185,6 +188,10 @@ async function saveNote(date, text) {
 // ── ACTIONS ────────────────────────────────────────────────────────
 async function setName(name) {
   name=(name||'').trim(); if(!name)return;
+  if(name===ADMIN_NAME){
+    const pass=prompt('Contraseña de Ander:');
+    if(pass!==ADMIN_PASS){ alert('Contraseña incorrecta.'); return; }
+  }
   state.myName=name; localStorage.setItem('amama_name',name);
   await ensureCousin(name); render();
 }
@@ -570,7 +577,7 @@ function renderLegend() {
   return `<div class="card" style="padding:14px;margin-top:8px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <div style="font-size:12px;font-weight:500;color:var(--text2);">Primos Agirrezabal (${state.cousins.length}/9)</div>
-      <button class="btn" onclick="state.editingCousins=!state.editingCousins;render()" style="font-size:11px;padding:3px 8px;color:${editing?'var(--danger-text)':'var(--text3)'};border-color:${editing?'var(--danger-border)':'var(--border)'};">${editing?'Cancelar':'Gestionar'}</button>
+      ${state.myName===ADMIN_NAME?`<button class="btn" onclick="state.editingCousins=!state.editingCousins;render()" style="font-size:11px;padding:3px 8px;color:${editing?'var(--danger-text)':'var(--text3)'};border-color:${editing?'var(--danger-border)':'var(--border)'};">${editing?'Cancelar':'Gestionar'}</button>`:''}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;">
       ${state.cousins.length

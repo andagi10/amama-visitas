@@ -139,13 +139,20 @@ async function ensureCousin(name) {
 }
 
 async function deleteCousin(name) {
-  if (!confirm(`¿Borrar a ${name} y todas sus visitas?`)) return;
-  // If deleting myself, log out first
+  if (!confirm('¿Borrar a ' + name + ' y todas sus visitas?')) return;
   if (name === state.myName) { state.myName=null; localStorage.removeItem('amama_name'); }
-  await db.from('visits').delete().eq('cousin_name', name);
+
+  // Delete visits
+  const {error: errV} = await db.from('visits').delete().eq('cousin_name', name);
+  if (errV) { alert('Error borrando visitas: ' + (errV.message||JSON.stringify(errV))); return; }
   state.visits = state.visits.filter(v=>v.cousin_name!==name);
+
+  // Delete cousin
   const cousin = state.cousins.find(c=>c.name===name);
-  if (cousin) await db.from('cousins').delete().eq('id', cousin.id);
+  if (cousin) {
+    const {error: errC} = await db.from('cousins').delete().eq('id', cousin.id);
+    if (errC) { alert('Error borrando primo: ' + (errC.message||JSON.stringify(errC))); return; }
+  }
   state.cousins = state.cousins.filter(c=>c.name!==name);
   render();
 }

@@ -103,7 +103,8 @@ const state = {
   view:'week',
   weekStart: mondayOf(new Date()),
   monthRef: {y:new Date().getFullYear(),m:new Date().getMonth()},
-  activeNoteDay:null
+  activeNoteDay:null,
+  editingCousins:false
 };
 
 // ── SUPABASE ───────────────────────────────────────────────────────
@@ -123,6 +124,19 @@ async function ensureCousin(name) {
   const ci = state.cousins.length;
   const {data} = await db.from('cousins').insert({name,color_index:ci}).select().single();
   if (data) state.cousins.push(data);
+}
+
+async function deleteCousin(name) {
+  if (!confirm(`¿Borrar a ${name} y todas sus visitas?`)) return;
+  // If deleting myself, log out first
+  if (name === state.myName) { state.myName=null; localStorage.removeItem('amama_name'); }
+  await db.from('visits').delete().eq('cousin_name', name);
+  state.visits = state.visits.filter(v=>v.cousin_name!==name);
+  const cousin = state.cousins.find(c=>c.name===name);
+  if (cousin) await db.from('cousins').delete().eq('id', cousin.id);
+  state.cousins = state.cousins.filter(c=>c.name!==name);
+  state.editingCousins = false;
+  render();
 }
 
 async function toggleVisit(date, slot) {
@@ -373,68 +387,133 @@ function renderMonth() {
 function renderDash() {
   if (!state.visits.length) return `<div style="text-align:center;padding:40px 20px;color:var(--text3);font-size:14px;">Aún no hay visitas registradas.</div>`;
 
-  // Total visits per cousin
+  // ── helpers ──
   const visitsByName={};
   state.visits.forEach(v=>{visitsByName[v.cousin_name]=(visitsByName[v.cousin_name]||0)+1;});
   const sorted=Object.entries(visitsByName).sort((a,b)=>b[1]-a[1]);
-  const maxVisits=sorted[0][1];
+  const maxVisits=sorted.length?sorted[0][1]:1;
 
-  // Favourite slot per cousin
   const slotByName={};
   state.visits.forEach(v=>{
     if(!slotByName[v.cousin_name])slotByName[v.cousin_name]={morning:0,afternoon:0,evening:0};
     slotByName[v.cousin_name][v.slot]++;
   });
   function favSlot(name){
-    const s=slotByName[name]||{}; const entries=Object.entries(s); if(!entries.length)return '-';
-    const best=entries.sort((a,b)=>b[1]-a[1])[0][0];
-    return {morning:'Mañanas',afternoon:'Tardes',evening:'Noches'}[best]||'-';
+    const s=slotByName[name]||{}; const e=Object.entries(s); if(!e.length)return '-';
+    return {morning:'Mañanas',afternoon:'Tardes',evening:'Noches'}[e.sort((a,b)=>b[1]-a[1])[0][0]]||'-';
   }
 
-  // Streak: most consecutive weeks with visits
-  function getStreak(name){
-    const visitDates=[...new Set(state.visits.filter(v=>v.cousin_name===name).map(v=>v.date))].sort();
-    if(!visitDates.length)return 0;
-    let maxS=1,cur=1;
-    for(let i=1;i<visitDates.length;i++){
-      const prev=new Date(visitDates[i-1]+'T12:00:00'), curr=new Date(visitDates[i]+'T12:00:00');
-      const diff=(curr-prev)/(1000*60*60*24);
-      if(diff<=7){cur++;maxS=Math.max(maxS,cur);}else cur=1;
+  // consecutive weeks streak
+  function weekStreak(name){
+    const weeks=[...new Set(state.visits.filter(v=>v.cousin_name===name).map(v=>localDs(mondayOf(new Date(v.date+'T12:00:00')))))].sort();
+    if(!weeks.length)return 0;
+    let cur=1,max=1;
+    for(let i=1;i<weeks.length;i++){
+      const diff=(new Date(weeks[i]+'T12:00:00')-new Date(weeks[i-1]+'T12:00:00'))/(1000*60*60*24*7);
+      if(Math.round(diff)===1){cur++;max=Math.max(max,cur);}else cur=1;
     }
-    return maxS;
+    return max;
   }
 
-  // Total days amama accompanied
+  // visits this week
+  const cwm=currentMondayStr();
+  const cwDates=weekDates(mondayOf(new Date())).map(d=>localDs(d));
+  function visitsThisWeek(name){return state.visits.filter(v=>v.cousin_name===name&&cwDates.includes(v.date)).length;}
+
+  // visits last 4 weeks heatmap per cousin
+  function last4Weeks(name){
+    const weeks=[];
+    for(let w=3;w>=0;w--){
+      const mon=mondayOf(new Date()); mon.setDate(mon.getDate()-w*7);
+      const dates=weekDates(mon).map(d=>localDs(d));
+      const count=state.visits.filter(v=>v.cousin_name===name&&dates.includes(v.date)).length;
+      weeks.push(count);
+    }
+    return weeks;
+  }
+
   const uniqueDays=new Set(state.visits.map(v=>v.date)).size;
   const totalVisitsAll=state.visits.length;
+  const noVisit=state.cousins.filter(c=>!visitsByName[c.name]);
 
-  let html=`<div style="display:flex;gap:8px;margin-bottom:12px;">
-    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Días acompañada</div><div style="font-size:22px;font-weight:500;color:var(--success-text);">${uniqueDays}</div></div>
+  // ── this week highlight ──
+  const thisWeekVisitors=[...new Set(state.visits.filter(v=>cwDates.includes(v.date)).map(v=>v.cousin_name))];
+  const thisWeekMissing=state.cousins.filter(c=>!thisWeekVisitors.includes(c.name));
+
+  let html='';
+
+  // Top stats
+  html+=`<div style="display:flex;gap:8px;margin-bottom:12px;">
+    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Días con visita</div><div style="font-size:22px;font-weight:500;color:var(--success-text);">${uniqueDays}</div></div>
     <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Visitas totales</div><div style="font-size:22px;font-weight:500;">${totalVisitsAll}</div></div>
-    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Primos activos</div><div style="font-size:22px;font-weight:500;">${sorted.length}</div></div>
+    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Primos activos</div><div style="font-size:22px;font-weight:500;">${sorted.length}<span style="font-size:13px;color:var(--text3);">/${state.cousins.length}</span></div></div>
   </div>`;
 
+  // Esta semana quién falta
+  if(thisWeekMissing.length){
+    html+=`<div class="card" style="padding:12px 14px;margin-bottom:8px;background:var(--warn-bg);border-color:var(--warn-border);">
+      <div style="font-size:12px;font-weight:500;color:var(--warn-text);margin-bottom:8px;">Esta semana aún no han ido 👀</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">
+        ${thisWeekMissing.map(c=>{const col=COLORS[c.color_index%COLORS.length];return `<span class="pill" style="background:${col.bg};color:${col.text};">${c.name}</span>`;}).join('')}
+      </div>
+    </div>`;
+  } else if(thisWeekVisitors.length){
+    html+=`<div class="card" style="padding:12px 14px;margin-bottom:8px;background:var(--success-bg);border-color:var(--success-border);">
+      <div style="font-size:12px;font-weight:500;color:var(--success-text);">Todos han ido esta semana 🎉</div>
+    </div>`;
+  }
+
+  // Ranking con heatmap 4 semanas
   html+=`<div class="card" style="padding:14px;margin-bottom:8px;">
-    <div style="font-size:13px;font-weight:500;margin-bottom:12px;">Ranking de visitas</div>`;
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
+      <div style="font-size:13px;font-weight:500;">Ranking de visitas</div>
+      <div style="font-size:10px;color:var(--text3);">Últimas 4 semanas →</div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Cada cuadrado = una semana</div>`;
+
   sorted.forEach(([name,count],i)=>{
-    const c=cousinColor(name); const pct=Math.round((count/maxVisits)*100);
+    const c=cousinColor(name);
+    const pct=Math.round((count/maxVisits)*100);
     const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    html+=`<div style="margin-bottom:10px;">
+    const streak=weekStreak(name);
+    const weeks=last4Weeks(name);
+    const thisW=visitsThisWeek(name);
+    const heatSquares=weeks.map(w=>{
+      const bg=w===0?'var(--bg3)':w<=1?'var(--success-bg)':w<=2?'var(--success-border)':'var(--success-text)';
+      return `<div style="width:14px;height:14px;border-radius:3px;background:${bg};display:inline-block;"></div>`;
+    }).join('');
+
+    html+=`<div style="margin-bottom:12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
         <div style="display:flex;align-items:center;gap:6px;">
-          ${medal?`<span style="font-size:14px;">${medal}</span>`:`<span style="font-size:12px;color:var(--text3);min-width:18px;text-align:center;">${i+1}</span>`}
+          ${medal?`<span style="font-size:13px;">${medal}</span>`:`<span style="font-size:11px;color:var(--text3);min-width:16px;">${i+1}</span>`}
           <span class="dot" style="background:${c.dot};"></span>
           <span style="font-size:13px;font-weight:${i<3?'500':'400'};">${name}</span>
+          ${thisW>0?`<span style="font-size:10px;padding:1px 5px;border-radius:10px;background:var(--info-bg);color:var(--info-text);">esta semana ✓</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:11px;color:var(--text3);">${favSlot(name)}</span>
-          <span style="font-size:13px;font-weight:500;color:${c.text};background:${c.bg};padding:2px 8px;border-radius:20px;">${count}</span>
+          <div style="display:flex;gap:3px;align-items:center;">${heatSquares}</div>
+          <span style="font-size:13px;font-weight:500;color:${c.text};background:${c.bg};padding:2px 8px;border-radius:20px;min-width:28px;text-align:center;">${count}</span>
         </div>
       </div>
       <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${c.dot};"></div></div>
+      <div style="display:flex;gap:12px;margin-top:4px;">
+        <span style="font-size:10px;color:var(--text3);">${favSlot(name)}</span>
+        ${streak>1?`<span style="font-size:10px;color:var(--success-text);">🔥 ${streak} semanas seguidas</span>`:''}
+      </div>
     </div>`;
   });
   html+=`</div>`;
+
+  // Primos que nunca han ido
+  if(noVisit.length){
+    html+=`<div class="card" style="padding:14px;margin-bottom:8px;background:var(--danger-bg);border-color:var(--danger-border);">
+      <div style="font-size:13px;font-weight:500;color:var(--danger-text);margin-bottom:6px;">Nunca han ido a ver a Amama 😢</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">
+        ${noVisit.map(c=>{const col=COLORS[c.color_index%COLORS.length];return `<span class="pill" style="background:${col.bg};color:${col.text};">${c.name}</span>`;}).join('')}
+      </div>
+    </div>`;
+  }
 
   // Slot distribution
   const slotTotals={morning:0,afternoon:0,evening:0};
@@ -443,42 +522,69 @@ function renderDash() {
   html+=`<div class="card" style="padding:14px;margin-bottom:8px;">
     <div style="font-size:13px;font-weight:500;margin-bottom:12px;">¿Cuándo suelen ir?</div>
     <div style="display:flex;gap:8px;">`;
-  [{id:'morning',label:'Mañana',time:'10–14h'},{id:'afternoon',label:'Tarde',time:'16–20h'},{id:'evening',label:'Noche',time:'20–22h'}].forEach(s=>{
+  [{id:'morning',label:'Mañana',time:'10–14h',emoji:'☀️'},{id:'afternoon',label:'Tarde',time:'16–20h',emoji:'🌤️'},{id:'evening',label:'Noche',time:'20–22h',emoji:'🌙'}].forEach(s=>{
     const n=slotTotals[s.id]||0; const pct=Math.round((n/totalSlot)*100);
-    html+=`<div style="flex:1;text-align:center;background:var(--bg2);border-radius:var(--radius);padding:12px 8px;">
-      <div style="font-size:22px;font-weight:600;">${pct}%</div>
+    html+=`<div style="flex:1;text-align:center;background:var(--bg2);border-radius:var(--radius);padding:12px 6px;">
+      <div style="font-size:18px;margin-bottom:4px;">${s.emoji}</div>
+      <div style="font-size:20px;font-weight:600;">${pct}%</div>
       <div style="font-size:12px;font-weight:500;margin:2px 0;">${s.label}</div>
-      <div style="font-size:10px;color:var(--text3);">${s.time}</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px;">${n} visitas</div>
+      <div style="font-size:10px;color:var(--text3);">${n} visitas</div>
     </div>`;
   });
   html+=`</div></div>`;
 
-  // Who hasn't visited yet
-  const noVisit=state.cousins.filter(c=>!visitsByName[c.name]);
-  if(noVisit.length){
-    html+=`<div class="card" style="padding:14px;background:var(--warn-bg);border-color:var(--warn-border);">
-      <div style="font-size:13px;font-weight:500;color:var(--warn-text);margin-bottom:8px;">Aún no han ido a ver a Amama</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">`;
-    noVisit.forEach(c=>{const col=COLORS[c.color_index%COLORS.length];html+=`<span class="pill" style="background:${col.bg};color:${col.text};">${c.name}</span>`;});
-    html+=`</div></div>`;
+  // Weekly trend: visits per week last 8 weeks
+  const weekTrend=[];
+  for(let w=7;w>=0;w--){
+    const mon=mondayOf(new Date()); mon.setDate(mon.getDate()-w*7);
+    const dates=weekDates(mon).map(d=>localDs(d));
+    const count=state.visits.filter(v=>dates.includes(v.date)).length;
+    const label=w===0?'Esta':w===1?'Ant.':fmt(mon).replace(/\s/g,'\u00a0');
+    weekTrend.push({label,count});
   }
+  const maxTrend=Math.max(...weekTrend.map(w=>w.count),1);
+  html+=`<div class="card" style="padding:14px;">
+    <div style="font-size:13px;font-weight:500;margin-bottom:14px;">Visitas por semana (últimas 8)</div>
+    <div style="display:flex;align-items:flex-end;gap:5px;height:70px;">`;
+  weekTrend.forEach(w=>{
+    const h=Math.max(4,Math.round((w.count/maxTrend)*66));
+    const isThis=w.label==='Esta';
+    html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+      <div style="font-size:9px;color:${isThis?'var(--info-text)':'var(--text3)'};">${w.count||''}</div>
+      <div style="width:100%;height:${h}px;background:${isThis?'var(--info-border)':'var(--success-border)'};border-radius:3px 3px 0 0;"></div>
+    </div>`;
+  });
+  html+=`</div><div style="display:flex;gap:5px;margin-top:4px;">`;
+  weekTrend.forEach(w=>{
+    const isThis=w.label==='Esta';
+    html+=`<div style="flex:1;text-align:center;font-size:9px;color:${isThis?'var(--info-text)':'var(--text3)'};">${w.label}</div>`;
+  });
+  html+=`</div></div>`;
+
   return html;
 }
 
 // ── LEGEND ─────────────────────────────────────────────────────────
 function renderLegend() {
+  const editing = state.editingCousins;
   return `<div class="card" style="padding:14px;margin-top:8px;">
-    <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Primos Agirrezabal (${state.cousins.length}/9)</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:500;color:var(--text2);">Primos Agirrezabal (${state.cousins.length}/9)</div>
+      <button class="btn" onclick="state.editingCousins=!state.editingCousins;render()" style="font-size:11px;padding:3px 8px;color:${editing?'var(--danger-text)':'var(--text3)'};border-color:${editing?'var(--danger-border)':'var(--border)'};">${editing?'Cancelar':'Gestionar'}</button>
+    </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;">
       ${state.cousins.length
-        ?state.cousins.map(c=>{const col=COLORS[c.color_index%COLORS.length],isMe=c.name===state.myName;
-          return `<div class="name-badge" style="background:${col.bg};border:${isMe?'1.5px':'0.5px'} solid ${col.dot}50;">
-            <span class="dot" style="background:${col.dot};"></span>
-            <span style="font-size:12px;color:${col.text};font-weight:${isMe?'500':'400'};">${c.name}${isMe?' (tú)':''}</span>
-          </div>`;}).join('')
-        :`<span style="font-size:12px;color:var(--text3);">Nadie se ha apuntado aún.</span>`}
+        ? state.cousins.map(c=>{
+            const col=COLORS[c.color_index%COLORS.length], isMe=c.name===state.myName;
+            return `<div class="name-badge" style="background:${col.bg};border:${isMe?'1.5px':'0.5px'} solid ${col.dot}50;gap:4px;">
+              <span class="dot" style="background:${col.dot};"></span>
+              <span style="font-size:12px;color:${col.text};font-weight:${isMe?'500':'400'};">${c.name}${isMe?' (tú)':''}</span>
+              ${editing?`<button onclick="deleteCousin('${c.name}')" style="background:none;border:none;cursor:pointer;font-size:14px;line-height:1;color:var(--danger-text);padding:0 2px;margin-left:2px;">×</button>`:''}
+            </div>`;
+          }).join('')
+        : `<span style="font-size:12px;color:var(--text3);">Nadie se ha apuntado aún.</span>`}
     </div>
+    ${editing?`<p style="font-size:11px;color:var(--text3);margin-top:10px;">Toca × para borrar un primo y todas sus visitas.</p>`:''}
   </div>`;
 }
 

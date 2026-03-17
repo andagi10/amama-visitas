@@ -147,7 +147,6 @@ async function deleteCousin(name) {
   const cousin = state.cousins.find(c=>c.name===name);
   if (cousin) await db.from('cousins').delete().eq('id', cousin.id);
   state.cousins = state.cousins.filter(c=>c.name!==name);
-  state.editingCousins = false;
   render();
 }
 
@@ -205,6 +204,7 @@ async function setName(name) {
   await ensureCousin(name); render();
 }
 function changeName() { state.myName=null; localStorage.removeItem('amama_name'); render(); }
+function toggleEditingCousins() { state.editingCousins=!state.editingCousins; render(); }
 function setView(v) { state.view=v; render(); }
 function changeWeek(d) { const x=new Date(state.weekStart); x.setDate(x.getDate()+d*7); state.weekStart=mondayOf(x); state.view='week'; render(); }
 function goCurrentWeek() { state.weekStart=mondayOf(new Date()); state.view='week'; render(); }
@@ -762,7 +762,7 @@ function renderLegend() {
   return `<div class="card" style="padding:14px;margin-top:8px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <div style="font-size:12px;font-weight:500;color:var(--text2);">Primos Agirrezabal (${state.cousins.length}/9)</div>
-      ${state.myName===ADMIN_NAME?`<button class="btn" onclick="state.editingCousins=!state.editingCousins;render()" style="font-size:11px;padding:3px 8px;color:${editing?'var(--danger-text)':'var(--text3)'};border-color:${editing?'var(--danger-border)':'var(--border)'};">${editing?'Cancelar':'Gestionar'}</button>`:''}
+      ${state.myName===ADMIN_NAME?`<button class="btn" onclick="toggleEditingCousins()" style="font-size:11px;padding:3px 8px;color:${editing?'var(--danger-text)':'var(--text3)'};border-color:${editing?'var(--danger-border)':'var(--border)'};">${editing?'Cancelar':'Gestionar'}</button>`:''}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;">
       ${state.cousins.length

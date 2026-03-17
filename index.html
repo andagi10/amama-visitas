@@ -99,6 +99,13 @@ function currentMonday() { return mondayOf(new Date()); }
 function currentMondayStr() { return localDs(currentMonday()); }
 function nextMondayStr() { const x=currentMonday(); x.setDate(x.getDate()+7); return localDs(x); }
 
+function weekLabel(offsetWeeks){
+  const mon=mondayOf(new Date()); mon.setDate(mon.getDate()-offsetWeeks*7);
+  if(offsetWeeks===0)return 'Esta sem.';
+  if(offsetWeeks===1)return 'Sem. ant.';
+  return fmt(mon);
+}
+
 // ── STATE ──────────────────────────────────────────────────────────
 const state = {
   myName: localStorage.getItem('amama_name')||null,
@@ -107,7 +114,9 @@ const state = {
   weekStart: mondayOf(new Date()),
   monthRef: {y:new Date().getFullYear(),m:new Date().getMonth()},
   activeNoteDay:null,
-  editingCousins:false
+  editingCousins:false,
+  dashSub:'general',   // 'general' | 'cousin'
+  dashCousin:null       // selected cousin name for detail view
 };
 
 // ── SUPABASE ───────────────────────────────────────────────────────
@@ -392,7 +401,19 @@ function renderMonth() {
 
 // ── RENDER DASHBOARD ───────────────────────────────────────────────
 function renderDash() {
-  if (!state.visits.length) return `<div style="text-align:center;padding:40px 20px;color:var(--text3);font-size:14px;">Aún no hay visitas registradas.</div>`;
+  const subTabs=`<div style="display:flex;gap:4px;padding:4px;background:var(--bg2);border-radius:var(--radius);margin-bottom:14px;">
+    <button class="tab ${state.dashSub==='general'?'active':''}" onclick="state.dashSub='general';render()" style="flex:1;">General</button>
+    <button class="tab ${state.dashSub==='cousin'?'active':''}" onclick="state.dashSub='cousin';render()" style="flex:1;">Por primo</button>
+  </div>`;
+
+  if (!state.visits.length) return subTabs+`<div style="text-align:center;padding:40px 20px;color:var(--text3);font-size:14px;">Aún no hay visitas registradas.</div>`;
+
+  if(state.dashSub==='cousin') return subTabs+renderDashCousin();
+  return subTabs+renderDashGeneral();
+}
+
+function renderDashGeneral() {
+  if (!state.visits.length) return '';
 
   // ── helpers ──
   const visitsByName={};
@@ -566,6 +587,170 @@ function renderDash() {
     const isThis=w.label==='Esta';
     html+=`<div style="flex:1;text-align:center;font-size:9px;color:${isThis?'var(--info-text)':'var(--text3)'};">${w.label}</div>`;
   });
+  html+=`</div></div>`;
+
+  return html;
+}
+
+// ── DASHBOARD POR PRIMO ───────────────────────────────────────────
+function renderDashCousin() {
+  // Cousin selector
+  const allNames = state.cousins.map(c=>c.name);
+
+  // Build 8-week table: rows = cousins, cols = weeks
+  const NUM_WEEKS = 8;
+  const weeks = [];
+  for(let w=NUM_WEEKS-1;w>=0;w--){
+    const mon=mondayOf(new Date()); mon.setDate(mon.getDate()-w*7);
+    const dates=weekDates(mon).map(d=>localDs(d));
+    weeks.push({label:w===0?'Esta':w===1?'Ant':fmt(mon).split(' ')[0], dates, offset:w});
+  }
+
+  // per cousin per week visits count
+  function weekCount(name,dates){
+    return state.visits.filter(v=>v.cousin_name===name&&dates.includes(v.date)).length;
+  }
+
+  // streak current (consecutive weeks from now backwards)
+  function currentStreak(name){
+    let streak=0;
+    for(let w=0;w<NUM_WEEKS;w++){
+      const mon=mondayOf(new Date()); mon.setDate(mon.getDate()-w*7);
+      const dates=weekDates(mon).map(d=>localDs(d));
+      if(weekCount(name,dates)>0) streak++;
+      else break;
+    }
+    return streak;
+  }
+
+  const visitsByName={};
+  state.visits.forEach(v=>{visitsByName[v.cousin_name]=(visitsByName[v.cousin_name]||0)+1;});
+
+  // If a cousin is selected, show detail
+  if(state.dashCousin){
+    const name=state.dashCousin;
+    const c=cousinColor(name);
+    const total=visitsByName[name]||0;
+    const streak=currentStreak(name);
+    const slotCounts={morning:0,afternoon:0,evening:0};
+    state.visits.filter(v=>v.cousin_name===name).forEach(v=>slotCounts[v.slot]=(slotCounts[v.slot]||0)+1);
+    const favS=Object.entries(slotCounts).sort((a,b)=>b[1]-a[1]);
+    const favSlotLabel={morning:'Mañana ☀️',afternoon:'Tarde 🌤️',evening:'Noche 🌙'};
+
+    // Day of week preference
+    const dowCounts=[0,0,0,0,0,0,0];
+    state.visits.filter(v=>v.cousin_name===name).forEach(v=>{
+      const dow=new Date(v.date+'T12:00:00').getDay();
+      const idx=dow===0?6:dow-1;
+      dowCounts[idx]++;
+    });
+    const maxDow=Math.max(...dowCounts,1);
+
+    let html=`<button onclick="state.dashCousin=null;render()" class="btn" style="font-size:12px;margin-bottom:14px;">← Todos los primos</button>
+    <div class="card" style="padding:16px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div style="width:40px;height:40px;border-radius:50%;background:${c.bg};border:1.5px solid ${c.dot};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:${c.text};">${name.charAt(0)}</div>
+        <div><div style="font-size:16px;font-weight:600;">${name}</div>
+        <div style="font-size:12px;color:var(--text3);">${streak>0?`🔥 ${streak} semana${streak>1?'s':''} seguida${streak>1?'s':''}`:'Sin racha activa'}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Total visitas</div><div style="font-size:20px;font-weight:500;color:${c.text};">${total}</div></div>
+        <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Racha actual</div><div style="font-size:20px;font-weight:500;">${streak}<span style="font-size:12px;color:var(--text3);"> sem</span></div></div>
+        <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Franja fav.</div><div style="font-size:13px;font-weight:500;margin-top:4px;">${favS.length&&favS[0][1]>0?favSlotLabel[favS[0][0]]:'-'}</div></div>
+      </div>
+
+      <div style="font-size:12px;font-weight:500;margin-bottom:8px;">Últimas ${NUM_WEEKS} semanas</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:60px;margin-bottom:4px;">`;
+    weeks.forEach(w=>{
+      const cnt=weekCount(name,w.dates);
+      const h=cnt>0?Math.max(10,Math.round((cnt/4)*56)):4;
+      const bg=cnt===0?'var(--bg3)':w.offset===0?'var(--info-border)':'var(--success-border)';
+      html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <div style="font-size:9px;color:${cnt>0?'var(--success-text)':'var(--text3)'};">${cnt||''}</div>
+        <div style="width:100%;height:${h}px;background:${bg};border-radius:3px 3px 0 0;"></div>
+      </div>`;
+    });
+    html+=`</div><div style="display:flex;gap:4px;margin-bottom:16px;">`;
+    weeks.forEach(w=>{html+=`<div style="flex:1;text-align:center;font-size:9px;color:${w.offset===0?'var(--info-text)':'var(--text3)'};">${w.label}</div>`;});
+    html+=`</div>
+
+      <div style="font-size:12px;font-weight:500;margin-bottom:8px;">¿Qué día de la semana suele ir?</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:40px;margin-bottom:4px;">`;
+    DAYS_S.forEach((d,i)=>{
+      const cnt=dowCounts[i]; const h=cnt>0?Math.max(6,Math.round((cnt/maxDow)*36)):3;
+      html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <div style="width:100%;height:${h}px;background:${cnt>0?c.dot:'var(--bg3)'};border-radius:3px 3px 0 0;"></div>
+      </div>`;
+    });
+    html+=`</div><div style="display:flex;gap:4px;">`;
+    DAYS_S.forEach(d=>{html+=`<div style="flex:1;text-align:center;font-size:9px;color:var(--text3);">${d}</div>`;});
+    html+=`</div></div>`;
+
+    // Franjas horaria breakdown
+    html+=`<div class="card" style="padding:14px;">
+      <div style="font-size:12px;font-weight:500;margin-bottom:10px;">Por franja horaria</div>
+      <div style="display:flex;gap:8px;">`;
+    [{id:'morning',label:'Mañana',emoji:'☀️'},{id:'afternoon',label:'Tarde',emoji:'🌤️'},{id:'evening',label:'Noche',emoji:'🌙'}].forEach(s=>{
+      const n=slotCounts[s.id]||0; const tot=total||1;
+      html+=`<div style="flex:1;text-align:center;background:var(--bg2);border-radius:var(--radius);padding:10px 4px;">
+        <div style="font-size:16px;">${s.emoji}</div>
+        <div style="font-size:18px;font-weight:600;color:${c.text};">${Math.round((n/tot)*100)}%</div>
+        <div style="font-size:10px;color:var(--text3);">${s.label}</div>
+        <div style="font-size:10px;color:var(--text3);">${n} veces</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+    return html;
+  }
+
+  // ── LIST VIEW: all cousins week-by-week ──
+  // Sort by total visits desc
+  const sortedNames=[...allNames].sort((a,b)=>(visitsByName[b]||0)-(visitsByName[a]||0));
+
+  let html=`<div class="card" style="padding:14px;margin-bottom:8px;overflow-x:auto;">
+    <div style="font-size:13px;font-weight:500;margin-bottom:12px;">Visitas por primo — últimas ${NUM_WEEKS} semanas</div>
+    <div style="min-width:340px;">
+      <div style="display:grid;grid-template-columns:90px repeat(${NUM_WEEKS},1fr);gap:3px;margin-bottom:4px;align-items:center;">
+        <div style="font-size:10px;color:var(--text3);">Primo</div>`;
+  weeks.forEach(w=>{html+=`<div style="font-size:9px;color:${w.offset===0?'var(--info-text)':'var(--text3)'};text-align:center;">${w.label}</div>`;});
+  html+=`</div>`;
+
+  sortedNames.forEach(name=>{
+    const c=cousinColor(name);
+    const streak=currentStreak(name);
+    html+=`<div style="display:grid;grid-template-columns:90px repeat(${NUM_WEEKS},1fr);gap:3px;margin-bottom:4px;align-items:center;" onclick="state.dashCousin='${name}';render()" style="cursor:pointer;">
+      <div style="display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="state.dashCousin='${name}';render()">
+        <span class="dot" style="background:${c.dot};flex-shrink:0;"></span>
+        <span style="font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${c.text};">${name}</span>
+      </div>`;
+    weeks.forEach(w=>{
+      const cnt=weekCount(name,w.dates);
+      const bg=cnt===0?'var(--bg3)':cnt===1?'var(--success-bg)':cnt<=2?'var(--success-border)':'var(--success-text)';
+      const tc=cnt===0?'var(--text3)':cnt>=3?'white':'var(--success-text)';
+      html+=`<div style="height:22px;border-radius:4px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:${tc};">${cnt||''}</div>`;
+    });
+    html+=`</div>`;
+  });
+  html+=`</div>
+    <p style="font-size:10px;color:var(--text3);margin-top:8px;">Toca un nombre para ver el detalle del primo</p>
+  </div>`;
+
+  // Weekly participation % chart
+  html+=`<div class="card" style="padding:14px;">
+    <div style="font-size:13px;font-weight:500;margin-bottom:12px;">% de primos que fueron cada semana</div>
+    <div style="display:flex;align-items:flex-end;gap:5px;height:70px;">`;
+  weeks.forEach(w=>{
+    const active=allNames.filter(n=>weekCount(n,w.dates)>0).length;
+    const pct=allNames.length?Math.round((active/allNames.length)*100):0;
+    const h=Math.max(4,Math.round((pct/100)*66));
+    const bg=pct>=80?'var(--success-text)':pct>=50?'var(--success-border)':w.offset===0?'var(--info-border)':'var(--warn-border)';
+    html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <div style="font-size:9px;color:var(--text3);">${pct}%</div>
+      <div style="width:100%;height:${h}px;background:${bg};border-radius:3px 3px 0 0;"></div>
+    </div>`;
+  });
+  html+=`</div><div style="display:flex;gap:5px;margin-top:4px;">`;
+  weeks.forEach(w=>{html+=`<div style="flex:1;text-align:center;font-size:9px;color:${w.offset===0?'var(--info-text)':'var(--text3)'};">${w.label}</div>`;});
   html+=`</div></div>`;
 
   return html;

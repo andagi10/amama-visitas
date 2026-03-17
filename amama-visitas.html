@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visitas a Amama — Agirrezabal</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#ffffff; --bg2:#f5f5f4; --bg3:#eeede8;
+  --border:rgba(0,0,0,0.1); --border2:rgba(0,0,0,0.18);
+  --text:#1a1a18; --text2:#6b6b66; --text3:#a0a09a;
+  --info-bg:#e6f1fb; --info-text:#0c447c; --info-border:#85b7eb;
+  --success-bg:#eaf3de; --success-text:#27500a; --success-border:#97c459;
+  --warn-bg:#faeeda; --warn-text:#633806; --warn-border:#ef9f27;
+  --danger-bg:#fcebeb; --danger-text:#791f1f; --danger-border:#f09595;
+  --radius:8px; --radius-lg:12px;
+}
+@media (prefers-color-scheme:dark) {
+  :root {
+    --bg:#1c1c1a; --bg2:#242422; --bg3:#2e2e2b;
+    --border:rgba(255,255,255,0.1); --border2:rgba(255,255,255,0.18);
+    --text:#f0efea; --text2:#a0a099; --text3:#666660;
+    --info-bg:#042c53; --info-text:#b5d4f4; --info-border:#185fa5;
+    --success-bg:#173404; --success-text:#c0dd97; --success-border:#3b6d11;
+    --warn-bg:#412402; --warn-text:#fac775; --warn-border:#854f0b;
+    --danger-bg:#501313; --danger-text:#f7c1c1; --danger-border:#a32d2d;
+  }
+}
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg3); color:var(--text); min-height:100vh; }
+.app { max-width:520px; margin:0 auto; padding:16px 12px 40px; }
+button { cursor:pointer; font-family:inherit; }
+.btn { border:0.5px solid var(--border2); background:var(--bg); border-radius:var(--radius); padding:7px 14px; font-size:13px; color:var(--text); transition:background 0.1s; }
+.btn:hover { background:var(--bg2); }
+.btn:active { transform:scale(0.98); }
+.btn-info { background:var(--info-bg); border-color:var(--info-border); color:var(--info-text); }
+.btn-nav { border:0.5px solid var(--border); background:var(--bg); border-radius:var(--radius); padding:4px 12px; font-size:18px; line-height:1; color:var(--text); }
+.card { background:var(--bg); border:0.5px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:8px; }
+.card.today { border:1.5px solid var(--info-border); }
+.tab-bar { display:flex; gap:4px; padding:4px; background:var(--bg2); border-radius:var(--radius); }
+.tab { border:none; background:transparent; border-radius:var(--radius); padding:6px 10px; font-size:13px; color:var(--text2); transition:all 0.15s; flex:1; }
+.tab.active { background:var(--bg); border:0.5px solid var(--border2); color:var(--text); font-weight:500; }
+.slot-btn { flex:1; cursor:pointer; border-radius:var(--radius); padding:10px 4px; text-align:center; font-family:inherit; font-size:12px; transition:opacity 0.12s; }
+.slot-btn:hover { opacity:0.82; }
+.pill { display:inline-flex; align-items:center; padding:2px 7px; border-radius:20px; font-size:11px; font-weight:500; margin:1px; }
+.mcell { border:0.5px solid var(--border); border-radius:var(--radius); padding:5px; min-height:70px; cursor:pointer; overflow:hidden; transition:background 0.1s; }
+.mcell:hover { background:var(--bg2); }
+.mcell.today { border:1.5px solid var(--info-border); }
+.mcell.faded { opacity:0.25; pointer-events:none; }
+.name-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; }
+.dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+.strip { display:flex; gap:4px; padding:7px 8px; background:var(--bg2); border-radius:var(--radius); margin-bottom:12px; }
+.strip-day { flex:1; text-align:center; padding:4px 2px; border-radius:6px; border:0.5px solid transparent; }
+input,textarea { font-family:inherit; font-size:13px; color:var(--text); background:var(--bg); border:0.5px solid var(--border2); border-radius:var(--radius); padding:8px 12px; outline:none; }
+input:focus,textarea:focus { border-color:var(--info-border); box-shadow:0 0 0 2px var(--info-bg); }
+.stat-card { background:var(--bg2); border-radius:var(--radius); padding:12px 14px; flex:1; min-width:0; }
+.bar-wrap { background:var(--bg2); border-radius:4px; height:8px; overflow:hidden; margin-top:6px; }
+.bar-fill { height:8px; border-radius:4px; transition:width 0.4s; }
+</style>
+</head>
+<body>
+<div class="app" id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--text3);">Cargando…</div></div>
+<script>
+const SUPABASE_URL  = 'https://stmwwseuoubmqpmpkunu.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0bXd3c2V1b3VibXFwbXBrdW51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NjcyMDgsImV4cCI6MjA4OTM0MzIwOH0.zBmhQi9-Cugd55SMInDoqzuZpyAhePzhpqHnGBD89lw';
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const DAYS   = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const DAYS_S = ['L','M','X','J','V','S','D'];
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const SLOTS  = [{id:'morning',label:'Mañana',time:'10–14h'},{id:'afternoon',label:'Tarde',time:'16–20h'},{id:'evening',label:'Noche',time:'20–22h'}];
+const COLORS = [
+  {dot:'#7F77DD',bg:'#EEEDFE',text:'#3C3489'},{dot:'#1D9E75',bg:'#E1F5EE',text:'#085041'},
+  {dot:'#D85A30',bg:'#FAECE7',text:'#712B13'},{dot:'#D4537E',bg:'#FBEAF0',text:'#72243E'},
+  {dot:'#378ADD',bg:'#E6F1FB',text:'#0C447C'},{dot:'#639922',bg:'#EAF3DE',text:'#27500A'},
+  {dot:'#BA7517',bg:'#FAEEDA',text:'#633806'},{dot:'#E24B4A',bg:'#FCEBEB',text:'#791F1F'},
+  {dot:'#888780',bg:'#F1EFE8',text:'#444441'}
+];
+
+// ── LOCAL DATE HELPERS (no UTC drift) ──────────────────────────────
+function localDs(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function mondayOf(d) {
+  const x = new Date(d); x.setHours(0,0,0,0);
+  const dow = x.getDay(); x.setDate(x.getDate()-(dow===0?6:dow-1)); return x;
+}
+function weekDates(mon) {
+  return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(d.getDate()+i);return d;});
+}
+function fmt(d) { return d.toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
+function todayStr() { return localDs(new Date()); }
+function currentMonday() { return mondayOf(new Date()); }
+function currentMondayStr() { return localDs(currentMonday()); }
+function nextMondayStr() { const x=currentMonday(); x.setDate(x.getDate()+7); return localDs(x); }
+
+// ── STATE ──────────────────────────────────────────────────────────
+const state = {
+  myName: localStorage.getItem('amama_name')||null,
+  cousins:[], visits:[], notes:{},
+  view:'week',
+  weekStart: mondayOf(new Date()),
+  monthRef: {y:new Date().getFullYear(),m:new Date().getMonth()},
+  activeNoteDay:null
+};
+
+// ── SUPABASE ───────────────────────────────────────────────────────
+async function loadAll() {
+  const [cv,vv,nv] = await Promise.all([
+    db.from('cousins').select('*').order('created_at'),
+    db.from('visits').select('*'),
+    db.from('notes').select('*')
+  ]);
+  state.cousins = cv.data||[];
+  state.visits  = vv.data||[];
+  const nm={}; (nv.data||[]).forEach(n=>nm[n.date]=n.note); state.notes=nm;
+}
+
+async function ensureCousin(name) {
+  if (state.cousins.find(c=>c.name===name)) return;
+  const ci = state.cousins.length;
+  const {data} = await db.from('cousins').insert({name,color_index:ci}).select().single();
+  if (data) state.cousins.push(data);
+}
+
+async function toggleVisit(date, slot) {
+  if (!state.myName) return;
+  const existing = state.visits.find(v=>v.date===date&&v.slot===slot&&v.cousin_name===state.myName);
+  if (existing) {
+    // Optimistic: remove immediately
+    state.visits = state.visits.filter(v=>v.id!==existing.id);
+    render();
+    const {error} = await db.from('visits').delete().eq('id',existing.id);
+    if (error) {
+      console.error('Error borrando visita:', error);
+      state.visits.push(existing); // rollback
+      render();
+      alert('Error al borrar la visita. Comprueba la consola.');
+    }
+  } else {
+    // Optimistic: add with temp id
+    const tempId = 'temp_'+Date.now();
+    const tempVisit = {id:tempId, date, slot, cousin_name:state.myName};
+    state.visits.push(tempVisit);
+    render();
+    const {data, error} = await db.from('visits').insert({date,slot,cousin_name:state.myName}).select().single();
+    if (error) {
+      console.error('Error guardando visita:', error);
+      state.visits = state.visits.filter(v=>v.id!==tempId); // rollback
+      render();
+      const msg = error.message || error.details || error.hint || JSON.stringify(error);
+      console.error('Full error:', JSON.stringify(error));
+      alert('Error al guardar: ' + msg + '\n\nDetalles en la consola (F12).');
+    } else if (data) {
+      // Replace temp with real record
+      const idx = state.visits.findIndex(v=>v.id===tempId);
+      if (idx>=0) state.visits[idx]=data;
+    }
+  }
+}
+
+async function saveNote(date, text) {
+  const t=(text||'').trim();
+  if(t){ await db.from('notes').upsert({date,note:t},{onConflict:'date'}); state.notes[date]=t; }
+  else { await db.from('notes').delete().eq('date',date); delete state.notes[date]; }
+  state.activeNoteDay=null; render();
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────────
+async function setName(name) {
+  name=(name||'').trim(); if(!name)return;
+  state.myName=name; localStorage.setItem('amama_name',name);
+  await ensureCousin(name); render();
+}
+function changeName() { state.myName=null; localStorage.removeItem('amama_name'); render(); }
+function setView(v) { state.view=v; render(); }
+function changeWeek(d) { const x=new Date(state.weekStart); x.setDate(x.getDate()+d*7); state.weekStart=mondayOf(x); state.view='week'; render(); }
+function goCurrentWeek() { state.weekStart=mondayOf(new Date()); state.view='week'; render(); }
+function goNextWeek() { const x=mondayOf(new Date()); x.setDate(x.getDate()+7); state.weekStart=x; state.view='week'; render(); }
+function changeMonth(d) { let {y,m}=state.monthRef; m+=d; if(m>11){m=0;y++;}if(m<0){m=11;y--;} state.monthRef={y,m}; render(); }
+function openNote(date) { state.activeNoteDay=date; render(); }
+function cancelNote() { state.activeNoteDay=null; render(); }
+
+// ── DATA HELPERS ───────────────────────────────────────────────────
+function cousinColor(name) { const c=state.cousins.find(x=>x.name===name); return c?COLORS[c.color_index%COLORS.length]:COLORS[8]; }
+function slotVisitors(date,slot) { return state.visits.filter(v=>v.date===date&&v.slot===slot).map(v=>v.cousin_name); }
+function dayVisitors(date) { const n=[]; state.visits.filter(v=>v.date===date).forEach(v=>{if(!n.includes(v.cousin_name))n.push(v.cousin_name);}); return n; }
+
+function weekRelation() {
+  const w = localDs(state.weekStart);
+  if (w===currentMondayStr()) return 'current';
+  if (w===nextMondayStr()) return 'next';
+  return state.weekStart < mondayOf(new Date()) ? 'past' : 'future';
+}
+
+// ── RENDER HELPERS ─────────────────────────────────────────────────
+function pillHTML(name) { const c=cousinColor(name); return `<span class="pill" style="background:${c.bg};color:${c.text};">${name}</span>`; }
+
+// ── LONE AMAMA STATUS ──────────────────────────────────────────────
+function renderAmamaStatus() {
+  const dates = weekDates(state.weekStart);
+  const lonely = dates.filter(d=>dayVisitors(localDs(d)).length===0);
+  const all7 = lonely.length===7;
+  const none = lonely.length===0;
+  if (none) return `<div class="card" style="margin-bottom:8px;padding:14px 16px;background:var(--success-bg);border-color:var(--success-border);display:flex;align-items:center;gap:12px;">
+    <span style="font-size:28px;">🥰</span>
+    <div><div style="font-size:13px;font-weight:500;color:var(--success-text);">Amama está bien acompañada esta semana</div>
+    <div style="font-size:12px;color:var(--success-text);opacity:0.8;">Toda la semana cubierta</div></div></div>`;
+  if (all7) return `<div class="card" style="margin-bottom:8px;padding:14px 16px;background:var(--danger-bg);border-color:var(--danger-border);display:flex;align-items:center;gap:12px;">
+    <span style="font-size:28px;">😢</span>
+    <div><div style="font-size:13px;font-weight:500;color:var(--danger-text);">Amama está solita toda la semana</div>
+    <div style="font-size:12px;color:var(--danger-text);opacity:0.8;">¡Nadie se ha apuntado aún!</div></div></div>`;
+  const lonelyNames = lonely.map(d=>DAYS[dates.indexOf(d)]).join(', ');
+  const color = lonely.length>=4?'var(--danger':'var(--warn';
+  return `<div class="card" style="margin-bottom:8px;padding:14px 16px;background:${color}-bg);border-color:${color}-border);display:flex;align-items:center;gap:12px;">
+    <span style="font-size:28px;">${lonely.length>=4?'😔':'🙁'}</span>
+    <div><div style="font-size:13px;font-weight:500;color:${color}-text);">Amama estará sola ${lonely.length} días</div>
+    <div style="font-size:12px;color:${color}-text);opacity:0.8;">${lonelyNames}</div></div></div>`;
+}
+
+// ── RENDER NAME SCREEN ─────────────────────────────────────────────
+function renderNameScreen() {
+  let ch='';
+  if(state.cousins.length){
+    ch=`<p style="font-size:12px;color:var(--text3);margin:0 0 8px;">¿Eres tú?</p><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">`;
+    ch+=state.cousins.map(c=>{const col=COLORS[c.color_index%COLORS.length];return `<button class="btn" onclick="setName('${c.name}')" style="border:1.5px solid ${col.dot};color:${col.text};background:${col.bg};">${c.name}</button>`;}).join('');
+    ch+=`</div><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="flex:1;height:0.5px;background:var(--border)"></div><span style="font-size:11px;color:var(--text3);">o soy nuevo/a</span><div style="flex:1;height:0.5px;background:var(--border)"></div></div>`;
+  } else {
+    ch=`<p style="font-size:13px;color:var(--text2);margin:0 0 16px;">¡Sé el primero en apuntarte!</p>`;
+  }
+  return `<div style="display:flex;align-items:center;justify-content:center;min-height:80vh;">
+    <div class="card" style="padding:28px 24px;max-width:360px;width:100%;border-radius:var(--radius-lg);">
+      <div style="width:44px;height:44px;border-radius:50%;background:var(--warn-bg);display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--warn-text)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h2 style="font-size:18px;font-weight:500;margin:0 0 6px;">Visitas a Amama</h2>
+      <p style="font-size:13px;color:var(--text2);margin:0 0 20px;line-height:1.6;">Primos Agirrezabal — organicemos las visitas para que no esté sola.</p>
+      ${ch}
+      <div style="display:flex;gap:8px;"><input id="ni" type="text" placeholder="Tu nombre..." style="flex:1;" onkeydown="if(event.key==='Enter')setName(this.value)"/><button class="btn btn-info" onclick="setName(document.getElementById('ni').value)">Entrar</button></div>
+    </div></div>`;
+}
+
+// ── RENDER HEADER ──────────────────────────────────────────────────
+function renderHeader() {
+  const myCol=state.myName?cousinColor(state.myName):null;
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;margin-bottom:12px;border-bottom:0.5px solid var(--border);">
+    <div><h1 style="font-size:17px;font-weight:600;margin:0;">Visitas a Amama</h1>
+    <p style="font-size:11px;color:var(--text3);margin:2px 0 0;">Primos Agirrezabal</p></div>
+    ${myCol?`<button class="btn" onclick="changeName()" style="font-size:12px;display:flex;align-items:center;gap:5px;border:1.5px solid ${myCol.dot};color:${myCol.text};background:${myCol.bg};">
+      <span class="dot" style="background:${myCol.dot};"></span>${state.myName}</button>`:''}
+  </div>`;
+}
+
+// ── RENDER TABS ────────────────────────────────────────────────────
+function renderTabs() {
+  const rel=weekRelation();
+  const isW=state.view==='week', isM=state.view==='month', isDash=state.view==='dash';
+  const isCurr=isW&&rel==='current', isNext=isW&&rel==='next', isHist=isW&&(rel==='past'||rel==='future');
+  return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">
+    <div class="tab-bar" style="flex:1;">
+      <button class="tab ${isCurr?'active':''}" onclick="goCurrentWeek()">Esta semana</button>
+      <button class="tab ${isNext?'active':''}" onclick="goNextWeek()">Próx. semana</button>
+      <button class="tab ${isM?'active':''}" onclick="setView('month')">Mes</button>
+      <button class="tab ${isDash?'active':''}" onclick="setView('dash')">Stats</button>
+    </div>
+    ${isHist?`<span style="font-size:11px;padding:3px 8px;border-radius:20px;background:var(--warn-bg);color:var(--warn-text);white-space:nowrap;flex-shrink:0;">${rel==='past'?'Historial':'Futuro'}</span>`:''}
+  </div>`;
+}
+
+// ── RENDER WEEK ────────────────────────────────────────────────────
+function renderWeek() {
+  const dates=weekDates(state.weekStart);
+  const today=todayStr();
+  let html = renderAmamaStatus();
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <button class="btn-nav" onclick="changeWeek(-1)">‹</button>
+    <div style="text-align:center;"><div style="font-size:13px;font-weight:500;">${fmt(dates[0])} – ${fmt(dates[6])}</div></div>
+    <button class="btn-nav" onclick="changeWeek(1)">›</button>
+  </div>`;
+  html+=`<div class="strip">`;
+  dates.forEach((d,i)=>{
+    const isT=localDs(d)===today, acc=dayVisitors(localDs(d)).length>0;
+    html+=`<div class="strip-day" style="border-color:${isT?'var(--info-border)':'transparent'};">
+      <div style="font-size:10px;color:${isT?'var(--info-text)':'var(--text3)'};">${DAYS_S[i]}</div>
+      <span class="dot" style="background:${acc?'var(--success-text)':'var(--border2)'};margin:3px auto;display:block;"></span>
+    </div>`;
+  });
+  html+=`</div>`;
+  dates.forEach((d,di)=>{
+    const dkey=localDs(d), isT=dkey===today, note=state.notes[dkey]||'', isEditing=state.activeNoteDay===dkey;
+    html+=`<div class="card${isT?' today':''}">
+      <div style="padding:9px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:14px;font-weight:500;color:${isT?'var(--info-text)':'var(--text)'};">${DAYS[di]}</span>
+          <span style="font-size:12px;color:var(--text3);">${fmt(d)}</span>
+          ${isT?`<span style="font-size:11px;padding:2px 6px;background:var(--info-bg);color:var(--info-text);border-radius:var(--radius);">hoy</span>`:''}
+        </div>
+        <button class="btn" onclick="openNote('${dkey}')" style="font-size:11px;padding:3px 8px;color:${note?'var(--warn-text)':'var(--text3)'};border-color:${note?'var(--warn-border)':'var(--border)'};">${note?'Nota':'+nota'}</button>
+      </div>`;
+    if(isEditing){
+      html+=`<div style="padding:8px 10px;background:var(--bg2);border-bottom:0.5px solid var(--border);">
+        <textarea id="nt" style="width:100%;height:56px;resize:none;">${note}</textarea>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button class="btn" onclick="cancelNote()" style="flex:1;font-size:12px;">Cancelar</button>
+          <button class="btn btn-info" onclick="saveNote('${dkey}',document.getElementById('nt').value)" style="flex:1;font-size:12px;">Guardar</button>
+        </div></div>`;
+    } else if(note){
+      html+=`<div onclick="openNote('${dkey}')" style="padding:5px 12px;font-size:12px;color:var(--text2);border-bottom:0.5px solid var(--border);background:var(--bg2);cursor:pointer;">
+        <span style="font-weight:500;color:var(--warn-text);">Nota: </span>${note}</div>`;
+    }
+    html+=`<div style="display:flex;gap:6px;padding:8px;">`;
+    SLOTS.forEach(slot=>{
+      const vis=slotVisitors(dkey,slot.id), iAmGoing=state.myName&&vis.includes(state.myName);
+      const bg=iAmGoing?'var(--info-bg)':vis.length?'var(--success-bg)':'var(--bg2)';
+      const border=iAmGoing?'1.5px solid var(--info-border)':vis.length?'0.5px solid var(--success-border)':'0.5px solid var(--border)';
+      const lc=iAmGoing?'var(--info-text)':vis.length?'var(--success-text)':'var(--text2)';
+      const names=vis.map(pillHTML).join('');
+      html+=`<button class="slot-btn" onclick="toggleVisit('${dkey}','${slot.id}')" style="background:${bg};border:${border};">
+        <div style="font-weight:500;color:${lc};">${slot.label}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:1px;">${slot.time}</div>
+        ${names?`<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-top:5px;gap:1px;">${names}</div>`:''}
+      </button>`;
+    });
+    html+=`</div></div>`;
+  });
+  return html;
+}
+
+// ── RENDER MONTH ───────────────────────────────────────────────────
+function renderMonth() {
+  const {y,m}=state.monthRef, today=todayStr();
+  const totalDays=new Date(y,m+1,0).getDate();
+  const firstDow=new Date(y,m,1).getDay();
+  const offset=firstDow===0?6:firstDow-1;
+  let acc=0;
+  for(let d=1;d<=totalDays;d++){
+    const dk=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if(dayVisitors(dk).length>0)acc++;
+  }
+  let html=`<div style="font-size:12px;margin-bottom:10px;">
+    <span style="color:var(--success-text);font-weight:500;">${acc}</span> días acompañada &middot; <span style="color:${totalDays-acc>10?'var(--danger-text)':'var(--warn-text)'};font-weight:500;">${totalDays-acc}</span> sola
+  </div>`;
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <button class="btn-nav" onclick="changeMonth(-1)">‹</button>
+    <div style="text-align:center;"><div style="font-size:14px;font-weight:500;">${MONTHS[m]} ${y}</div>
+    <button onclick="state.monthRef={y:new Date().getFullYear(),m:new Date().getMonth()};render()" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--info-text);font-family:inherit;">Este mes</button></div>
+    <button class="btn-nav" onclick="changeMonth(1)">›</button>
+  </div>`;
+  html+=`<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:4px;">`;
+  DAYS_S.forEach(d=>{html+=`<div style="text-align:center;font-size:11px;font-weight:500;color:var(--text3);padding:3px 0;">${d}</div>`;});
+  html+=`</div><div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;">`;
+  for(let i=0;i<offset;i++)html+=`<div class="mcell faded"></div>`;
+  for(let d=1;d<=totalDays;d++){
+    const dk=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const vis=dayVisitors(dk), iAmGoing=state.myName&&vis.includes(state.myName), isT=dk===today, note=state.notes[dk];
+    const bg=iAmGoing?'var(--info-bg)':vis.length?'var(--success-bg)':'transparent';
+    const nc=iAmGoing?'var(--info-text)':vis.length?'var(--success-text)':isT?'var(--info-text)':'var(--text)';
+    const shown=vis.slice(0,2);
+    html+=`<div class="mcell${isT?' today':''}" style="background:${bg};" onclick="state.weekStart=mondayOf(new Date('${dk}T12:00:00'));state.view='week';render();">
+      <div style="font-size:12px;font-weight:${isT?'600':'400'};color:${nc};margin-bottom:2px;">${d}</div>
+      ${shown.map(n=>{const c=cousinColor(n);return `<div style="font-size:9px;font-weight:500;padding:1px 4px;border-radius:10px;background:${c.bg};color:${c.text};margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n}</div>`;}).join('')}
+      ${vis.length>2?`<div style="font-size:9px;color:var(--text3);">+${vis.length-2} más</div>`:''}
+      ${note?`<span class="dot" style="background:var(--warn-text);margin-top:2px;width:5px;height:5px;"></span>`:''}
+    </div>`;
+  }
+  html+=`</div><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px;">Toca un día para ir a esa semana</p>`;
+  return html;
+}
+
+// ── RENDER DASHBOARD ───────────────────────────────────────────────
+function renderDash() {
+  if (!state.visits.length) return `<div style="text-align:center;padding:40px 20px;color:var(--text3);font-size:14px;">Aún no hay visitas registradas.</div>`;
+
+  // Total visits per cousin
+  const visitsByName={};
+  state.visits.forEach(v=>{visitsByName[v.cousin_name]=(visitsByName[v.cousin_name]||0)+1;});
+  const sorted=Object.entries(visitsByName).sort((a,b)=>b[1]-a[1]);
+  const maxVisits=sorted[0][1];
+
+  // Favourite slot per cousin
+  const slotByName={};
+  state.visits.forEach(v=>{
+    if(!slotByName[v.cousin_name])slotByName[v.cousin_name]={morning:0,afternoon:0,evening:0};
+    slotByName[v.cousin_name][v.slot]++;
+  });
+  function favSlot(name){
+    const s=slotByName[name]||{}; const entries=Object.entries(s); if(!entries.length)return '-';
+    const best=entries.sort((a,b)=>b[1]-a[1])[0][0];
+    return {morning:'Mañanas',afternoon:'Tardes',evening:'Noches'}[best]||'-';
+  }
+
+  // Streak: most consecutive weeks with visits
+  function getStreak(name){
+    const visitDates=[...new Set(state.visits.filter(v=>v.cousin_name===name).map(v=>v.date))].sort();
+    if(!visitDates.length)return 0;
+    let maxS=1,cur=1;
+    for(let i=1;i<visitDates.length;i++){
+      const prev=new Date(visitDates[i-1]+'T12:00:00'), curr=new Date(visitDates[i]+'T12:00:00');
+      const diff=(curr-prev)/(1000*60*60*24);
+      if(diff<=7){cur++;maxS=Math.max(maxS,cur);}else cur=1;
+    }
+    return maxS;
+  }
+
+  // Total days amama accompanied
+  const uniqueDays=new Set(state.visits.map(v=>v.date)).size;
+  const totalVisitsAll=state.visits.length;
+
+  let html=`<div style="display:flex;gap:8px;margin-bottom:12px;">
+    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Días acompañada</div><div style="font-size:22px;font-weight:500;color:var(--success-text);">${uniqueDays}</div></div>
+    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Visitas totales</div><div style="font-size:22px;font-weight:500;">${totalVisitsAll}</div></div>
+    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Primos activos</div><div style="font-size:22px;font-weight:500;">${sorted.length}</div></div>
+  </div>`;
+
+  html+=`<div class="card" style="padding:14px;margin-bottom:8px;">
+    <div style="font-size:13px;font-weight:500;margin-bottom:12px;">Ranking de visitas</div>`;
+  sorted.forEach(([name,count],i)=>{
+    const c=cousinColor(name); const pct=Math.round((count/maxVisits)*100);
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    html+=`<div style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          ${medal?`<span style="font-size:14px;">${medal}</span>`:`<span style="font-size:12px;color:var(--text3);min-width:18px;text-align:center;">${i+1}</span>`}
+          <span class="dot" style="background:${c.dot};"></span>
+          <span style="font-size:13px;font-weight:${i<3?'500':'400'};">${name}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--text3);">${favSlot(name)}</span>
+          <span style="font-size:13px;font-weight:500;color:${c.text};background:${c.bg};padding:2px 8px;border-radius:20px;">${count}</span>
+        </div>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${c.dot};"></div></div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // Slot distribution
+  const slotTotals={morning:0,afternoon:0,evening:0};
+  state.visits.forEach(v=>slotTotals[v.slot]=(slotTotals[v.slot]||0)+1);
+  const totalSlot=Object.values(slotTotals).reduce((a,b)=>a+b,0)||1;
+  html+=`<div class="card" style="padding:14px;margin-bottom:8px;">
+    <div style="font-size:13px;font-weight:500;margin-bottom:12px;">¿Cuándo suelen ir?</div>
+    <div style="display:flex;gap:8px;">`;
+  [{id:'morning',label:'Mañana',time:'10–14h'},{id:'afternoon',label:'Tarde',time:'16–20h'},{id:'evening',label:'Noche',time:'20–22h'}].forEach(s=>{
+    const n=slotTotals[s.id]||0; const pct=Math.round((n/totalSlot)*100);
+    html+=`<div style="flex:1;text-align:center;background:var(--bg2);border-radius:var(--radius);padding:12px 8px;">
+      <div style="font-size:22px;font-weight:600;">${pct}%</div>
+      <div style="font-size:12px;font-weight:500;margin:2px 0;">${s.label}</div>
+      <div style="font-size:10px;color:var(--text3);">${s.time}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">${n} visitas</div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+
+  // Who hasn't visited yet
+  const noVisit=state.cousins.filter(c=>!visitsByName[c.name]);
+  if(noVisit.length){
+    html+=`<div class="card" style="padding:14px;background:var(--warn-bg);border-color:var(--warn-border);">
+      <div style="font-size:13px;font-weight:500;color:var(--warn-text);margin-bottom:8px;">Aún no han ido a ver a Amama</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">`;
+    noVisit.forEach(c=>{const col=COLORS[c.color_index%COLORS.length];html+=`<span class="pill" style="background:${col.bg};color:${col.text};">${c.name}</span>`;});
+    html+=`</div></div>`;
+  }
+  return html;
+}
+
+// ── LEGEND ─────────────────────────────────────────────────────────
+function renderLegend() {
+  return `<div class="card" style="padding:14px;margin-top:8px;">
+    <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Primos Agirrezabal (${state.cousins.length}/9)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      ${state.cousins.length
+        ?state.cousins.map(c=>{const col=COLORS[c.color_index%COLORS.length],isMe=c.name===state.myName;
+          return `<div class="name-badge" style="background:${col.bg};border:${isMe?'1.5px':'0.5px'} solid ${col.dot}50;">
+            <span class="dot" style="background:${col.dot};"></span>
+            <span style="font-size:12px;color:${col.text};font-weight:${isMe?'500':'400'};">${c.name}${isMe?' (tú)':''}</span>
+          </div>`;}).join('')
+        :`<span style="font-size:12px;color:var(--text3);">Nadie se ha apuntado aún.</span>`}
+    </div>
+  </div>`;
+}
+
+// ── MAIN RENDER ────────────────────────────────────────────────────
+function render() {
+  const root=document.getElementById('root');
+  if(!state.myName){root.innerHTML=renderNameScreen();return;}
+  let body='';
+  if(state.view==='week')body=renderWeek();
+  else if(state.view==='month')body=renderMonth();
+  else body=renderDash();
+  root.innerHTML=renderHeader()+renderTabs()+body+renderLegend();
+}
+
+// ── INIT ───────────────────────────────────────────────────────────
+async function init() {
+  try { await loadAll(); render(); }
+  catch(e) { console.error(e); document.getElementById('root').innerHTML=`<div style="padding:32px;text-align:center;color:var(--danger-text);">Error conectando. Revisa la consola.</div>`; }
+}
+init();
+</script>
+
+<!--
+═══════════════════════════════════════════════════════════════
+ SQL SETUP — Ejecuta en Supabase > SQL Editor (solo la 1ª vez)
+═══════════════════════════════════════════════════════════════
+
+create table cousins (
+  id           uuid primary key default gen_random_uuid(),
+  name         text not null unique,
+  color_index  int  not null default 0,
+  created_at   timestamptz default now()
+);
+
+create table visits (
+  id           uuid primary key default gen_random_uuid(),
+  date         text not null,
+  slot         text not null,
+  cousin_name  text not null,
+  created_at   timestamptz default now(),
+  unique(date, slot, cousin_name)
+);
+
+create table notes (
+  date  text primary key,
+  note  text not null
+);
+
+alter table cousins enable row level security;
+alter table visits  enable row level security;
+alter table notes   enable row level security;
+
+create policy "public read cousins"  on cousins for select using (true);
+create policy "public write cousins" on cousins for insert with check (true);
+create policy "public read visits"   on visits  for select using (true);
+create policy "public write visits"  on visits  for insert with check (true);
+create policy "public delete visits" on visits  for delete using (true);
+create policy "public read notes"    on notes   for select using (true);
+create policy "public upsert notes"  on notes   for insert with check (true);
+create policy "public update notes"  on notes   for update using (true);
+create policy "public delete notes"  on notes   for delete using (true);
+
+═══════════════════════════════════════════════════════════════
+-->
+</body>
+</html>

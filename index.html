@@ -670,12 +670,20 @@ function renderDashCousin() {
     weeks.push({label:w===0?'Esta':w===1?'Ant':fmt(mon).split(' ')[0], dates, offset:w});
   }
 
-  // per cousin per week visits count
+  // per cousin per week: visits only (excluding calls)
+  function weekVisitCount(name,dates){
+    return state.visits.filter(v=>v.cousin_name===name&&v.slot!==CALL_SLOT&&dates.includes(v.date)).length;
+  }
+  // calls only
+  function weekCallCount(name,dates){
+    return state.visits.filter(v=>v.cousin_name===name&&v.slot===CALL_SLOT&&dates.includes(v.date)).length;
+  }
+  // combined (visits + calls)
   function weekCount(name,dates){
     return state.visits.filter(v=>v.cousin_name===name&&dates.includes(v.date)).length;
   }
 
-  // streak current (consecutive weeks from now backwards)
+  // streak current (consecutive weeks from now backwards, visits or calls)
   function currentStreak(name){
     let streak=0;
     for(let w=0;w<NUM_WEEKS;w++){
@@ -688,7 +696,9 @@ function renderDashCousin() {
   }
 
   const visitsByName={};
-  state.visits.forEach(v=>{visitsByName[v.cousin_name]=(visitsByName[v.cousin_name]||0)+1;});
+  state.visits.filter(v=>v.slot!==CALL_SLOT).forEach(v=>{visitsByName[v.cousin_name]=(visitsByName[v.cousin_name]||0)+1;});
+  const callsByName={};
+  state.visits.filter(v=>v.slot===CALL_SLOT).forEach(v=>{callsByName[v.cousin_name]=(callsByName[v.cousin_name]||0)+1;});
 
   // If a cousin is selected, show detail
   if(state.dashCousin){
@@ -718,20 +728,27 @@ function renderDashCousin() {
         <div style="font-size:12px;color:var(--text3);">${streak>0?`🔥 ${streak} semana${streak>1?'s':''} seguida${streak>1?'s':''}`:'Sin racha activa'}</div></div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px;">
-        <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Total visitas</div><div style="font-size:20px;font-weight:500;color:${c.text};">${total}</div></div>
+        <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Visitas</div><div style="font-size:20px;font-weight:500;color:${c.text};">${total}</div></div>
+        <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Llamadas</div><div style="font-size:20px;font-weight:500;color:var(--warn-text);">${callsByName[name]||0}<span style="font-size:14px;">📞</span></div></div>
         <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Racha actual</div><div style="font-size:20px;font-weight:500;">${streak}<span style="font-size:12px;color:var(--text3);"> sem</span></div></div>
-        <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Franja fav.</div><div style="font-size:13px;font-weight:500;margin-top:4px;">${favS.length&&favS[0][1]>0?favSlotLabel[favS[0][0]]:'-'}</div></div>
       </div>
 
       <div style="font-size:12px;font-weight:500;margin-bottom:8px;">Últimas ${NUM_WEEKS} semanas</div>
       <div style="display:flex;align-items:flex-end;gap:4px;height:60px;margin-bottom:4px;">`;
     weeks.forEach(w=>{
-      const cnt=weekCount(name,w.dates);
-      const h=cnt>0?Math.max(10,Math.round((cnt/4)*56)):4;
-      const bg=cnt===0?'var(--bg3)':w.offset===0?'var(--info-border)':'var(--success-border)';
-      html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
-        <div style="font-size:9px;color:${cnt>0?'var(--success-text)':'var(--text3)'};">${cnt||''}</div>
-        <div style="width:100%;height:${h}px;background:${bg};border-radius:3px 3px 0 0;"></div>
+      const vc=weekVisitCount(name,w.dates);
+      const cc=weekCallCount(name,w.dates);
+      const total=vc+cc;
+      const maxH=56;
+      const hv=total>0?Math.max(4,Math.round((vc/(total||1))*Math.max(10,Math.round((total/4)*maxH)))):0;
+      const hc=total>0?Math.max(cc>0?4:0,Math.round((cc/(total||1))*Math.max(10,Math.round((total/4)*maxH)))):0;
+      const hEmpty=total===0?4:0;
+      const bgV=w.offset===0?'var(--info-border)':'var(--success-border)';
+      html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;">
+        <div style="font-size:9px;color:${total>0?'var(--success-text)':'var(--text3)'};">${total||''}</div>
+        ${hEmpty?`<div style="width:100%;height:${hEmpty}px;background:var(--bg3);border-radius:3px 3px 0 0;"></div>`:''}
+        ${hc>0?`<div style="width:100%;height:${hc}px;background:var(--warn-border);border-radius:${hv?'0':'3px 3px'} 0 0;"></div>`:''}
+        ${hv>0?`<div style="width:100%;height:${hv}px;background:${bgV};border-radius:3px 3px 0 0;"></div>`:''}
       </div>`;
     });
     html+=`</div><div style="display:flex;gap:4px;margin-bottom:16px;">`;
@@ -751,16 +768,20 @@ function renderDashCousin() {
     html+=`</div></div>`;
 
     // Franjas horaria breakdown
+    const totalActions = total + (callsByName[name]||0) || 1;
     html+=`<div class="card" style="padding:14px;">
-      <div style="font-size:12px;font-weight:500;margin-bottom:10px;">Por franja horaria</div>
-      <div style="display:flex;gap:8px;">`;
-    [{id:'morning',label:'Mañana',emoji:'☀️'},{id:'afternoon',label:'Tarde',emoji:'🌤️'},{id:'evening',label:'Noche',emoji:'🌙'}].forEach(s=>{
-      const n=slotCounts[s.id]||0; const tot=total||1;
-      html+=`<div style="flex:1;text-align:center;background:var(--bg2);border-radius:var(--radius);padding:10px 4px;">
-        <div style="font-size:16px;">${s.emoji}</div>
-        <div style="font-size:18px;font-weight:600;color:${c.text};">${Math.round((n/tot)*100)}%</div>
-        <div style="font-size:10px;color:var(--text3);">${s.label}</div>
-        <div style="font-size:10px;color:var(--text3);">${n} veces</div>
+      <div style="font-size:12px;font-weight:500;margin-bottom:10px;">¿Cómo contacta?</div>
+      <div style="display:flex;gap:6px;">`;
+    [{id:'morning',label:'Mañana',emoji:'☀️'},{id:'afternoon',label:'Tarde',emoji:'🌤️'},{id:'evening',label:'Noche',emoji:'🌙'},{id:'call',label:'Llamada',emoji:'📞'}].forEach(s=>{
+      const n=s.id==='call'?(callsByName[name]||0):(slotCounts[s.id]||0);
+      const isCall=s.id==='call';
+      const bg=isCall&&n>0?'var(--warn-bg)':'var(--bg2)';
+      const tc=isCall&&n>0?'var(--warn-text)':c.text;
+      html+=`<div style="flex:1;text-align:center;background:${bg};border-radius:var(--radius);padding:10px 3px;">
+        <div style="font-size:15px;">${s.emoji}</div>
+        <div style="font-size:16px;font-weight:600;color:${tc};">${Math.round((n/totalActions)*100)}%</div>
+        <div style="font-size:9px;color:var(--text3);">${s.label}</div>
+        <div style="font-size:9px;color:var(--text3);">${n}x</div>
       </div>`;
     });
     html+=`</div></div>`;
@@ -788,10 +809,13 @@ function renderDashCousin() {
         <span style="font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${c.text};">${name}</span>
       </div>`;
     weeks.forEach(w=>{
-      const cnt=weekCount(name,w.dates);
-      const bg=cnt===0?'var(--bg3)':cnt===1?'var(--success-bg)':cnt<=2?'var(--success-border)':'var(--success-text)';
-      const tc=cnt===0?'var(--text3)':cnt>=3?'white':'var(--success-text)';
-      html+=`<div style="height:22px;border-radius:4px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:${tc};">${cnt||''}</div>`;
+      const vc=weekVisitCount(name,w.dates);
+      const cc=weekCallCount(name,w.dates);
+      const cnt=vc+cc;
+      const bg=cnt===0?'var(--bg3)':vc>0?(vc===1?'var(--success-bg)':vc<=2?'var(--success-border)':'var(--success-text)'):'var(--warn-bg)';
+      const tc=cnt===0?'var(--text3)':vc>=3?'white':vc>0?'var(--success-text)':'var(--warn-text)';
+      const label=vc>0?(cc>0?vc+'+📞':String(vc)):cc>0?'📞':'';
+      html+=`<div style="height:22px;border-radius:4px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:${tc};">${label}</div>`;
     });
     html+=`</div>`;
   });
@@ -804,7 +828,7 @@ function renderDashCousin() {
     <div style="font-size:13px;font-weight:500;margin-bottom:12px;">% de primos que fueron cada semana</div>
     <div style="display:flex;align-items:flex-end;gap:5px;height:70px;">`;
   weeks.forEach(w=>{
-    const active=allNames.filter(n=>weekCount(n,w.dates)>0).length;
+    const active=allNames.filter(n=>weekCount(n,w.dates)>0).length; // weekCount already includes calls
     const pct=allNames.length?Math.round((active/allNames.length)*100):0;
     const h=Math.max(4,Math.round((pct/100)*66));
     const bg=pct>=80?'var(--success-text)':pct>=50?'var(--success-border)':w.offset===0?'var(--info-border)':'var(--warn-border)';
@@ -880,24 +904,52 @@ function notifEnabled() {
 
 function scheduleVisitReminders() {
   if (!notifEnabled() || !state.myName) return;
-  // Find upcoming visits for me in next 7 days
   const dates = weekDates(state.weekStart);
+
+  // TEST MODE: notify every minute for each visit this week
+  const TEST_MODE = true;
+
   dates.forEach(d => {
     const dk = localDs(d);
     const allSlots = [...SLOTS.map(s=>s.id), 'call'];
-    const iAmGoing = allSlots.some(sid => slotVisitors(dk,sid).includes(state.myName) || callVisitors(dk).includes(state.myName));
+    const iAmGoing = allSlots.some(sid => {
+      const v = slotVisitors(dk, sid);
+      return v.includes(state.myName);
+    }) || callVisitors(dk).includes(state.myName);
     if (!iAmGoing) return;
-    // Notify at 9am the day before
-    const visitDate = new Date(dk+'T09:00:00');
-    visitDate.setDate(visitDate.getDate()-1);
-    const now = new Date();
-    const delay = visitDate - now;
-    if (delay > 0 && delay < 7*24*60*60*1000) {
-      setTimeout(() => {
+
+    const dayName = DAYS[dates.indexOf(d)];
+    const slotLabels = SLOTS.filter(s=>slotVisitors(dk,s.id).includes(state.myName)).map(s=>s.label);
+    const hasCall = callVisitors(dk).includes(state.myName);
+    const what = [...slotLabels, ...(hasCall?['Llamada']:[])].join(' y ') || 'visita';
+
+    if (TEST_MODE) {
+      // Fire immediately + repeat every 60s
+      const fire = () => {
         if (notifEnabled()) {
-          new Notification('Visitas a Amama 📅', { body: `¡Mañana tienes visita a Amama! (${DAYS[dates.indexOf(d)]})`, icon: 'icon-192.png' });
+          new Notification('Visitas a Amama 📅', {
+            body: `Tienes ${what} el ${dayName} con Amama`,
+            icon: 'icon-192.png'
+          });
         }
-      }, delay);
+      };
+      fire();
+      setInterval(fire, 60000);
+    } else {
+      // Production: notify at 9am the day before
+      const visitDate = new Date(dk+'T09:00:00');
+      visitDate.setDate(visitDate.getDate()-1);
+      const delay = visitDate - new Date();
+      if (delay > 0 && delay < 7*24*60*60*1000) {
+        setTimeout(() => {
+          if (notifEnabled()) {
+            new Notification('Visitas a Amama 📅', {
+              body: `¡Mañana tienes ${what} con Amama! (${dayName})`,
+              icon: 'icon-192.png'
+            });
+          }
+        }, delay);
+      }
     }
   });
 }

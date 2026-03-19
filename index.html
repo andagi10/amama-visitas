@@ -889,9 +889,7 @@ async function requestNotifications() {
     if (isIOS() && !isInstalledPWA()) {
       showInstallGuide();
     } else {
-      alert('Tu navegador no soporta notificaciones push.
-
-iOS requiere Safari 16.4+ con la app instalada en la pantalla de inicio.');
+      alert('Tu navegador no soporta notificaciones push.\n\niOS: necesitas Safari 16.4+ con la app instalada en pantalla de inicio.');
     }
     return;
   }

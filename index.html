@@ -911,7 +911,12 @@ function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
 
 function handleNotifBtn() {
   if (notifEnabled()) { whatsappReminder(); return; }
-  if (isInstalledPWA()) { requestNotifications(); return; }
+  // Desktop browsers: Notification API works without PWA install
+  if (!isMobile()) { requestNotifications(); return; }
+  // iOS mobile browser: needs PWA install first
+  if (isIOS() && !isInstalledPWA()) { showInstallGuide(); return; }
+  // Android/other mobile: PWA installed or Notification available
+  if (typeof Notification !== 'undefined') { requestNotifications(); return; }
   showInstallGuide();
 }
 

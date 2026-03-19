@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Visitas a Amama — Agirrezabal</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Amama">
+<meta name="theme-color" content="#1a1a18">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -57,6 +62,8 @@ input:focus,textarea:focus { border-color:var(--info-border); box-shadow:0 0 0 2
 .stat-card { background:var(--bg2); border-radius:var(--radius); padding:12px 14px; flex:1; min-width:0; }
 .bar-wrap { background:var(--bg2); border-radius:4px; height:8px; overflow:hidden; margin-top:6px; }
 .bar-fill { height:8px; border-radius:4px; transition:width 0.4s; }
+.install-banner { position:fixed; bottom:0; left:0; right:0; z-index:999; padding:12px 16px 20px; background:var(--bg); border-top:1px solid var(--border2); box-shadow:0 -4px 20px rgba(0,0,0,0.12); display:flex; align-items:center; gap:12px; transform:translateY(100%); transition:transform 0.3s ease; }
+.install-banner.show { transform:translateY(0); }
 </style>
 </head>
 <body>
@@ -71,6 +78,7 @@ const DAYS   = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domi
 const DAYS_S = ['L','M','X','J','V','S','D'];
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const SLOTS  = [{id:'morning',label:'Mañana',time:'10–14h'},{id:'afternoon',label:'Tarde',time:'16–20h'},{id:'evening',label:'Noche',time:'20–22h'}];
+const CALL_SLOT = 'call'; // separate slot for phone calls
 const COLORS = [
   {dot:'#7F77DD',bg:'#EEEDFE',text:'#3C3489'},{dot:'#1D9E75',bg:'#E1F5EE',text:'#085041'},
   {dot:'#D85A30',bg:'#FAECE7',text:'#712B13'},{dot:'#D4537E',bg:'#FBEAF0',text:'#72243E'},
@@ -225,6 +233,9 @@ function cousinColor(name) { const c=state.cousins.find(x=>x.name===name); retur
 function slotVisitors(date,slot) { return state.visits.filter(v=>v.date===date&&v.slot===slot).map(v=>v.cousin_name); }
 function dayVisitors(date) { const n=[]; state.visits.filter(v=>v.date===date).forEach(v=>{if(!n.includes(v.cousin_name))n.push(v.cousin_name);}); return n; }
 
+function callVisitors(date) { return state.visits.filter(v=>v.date===date&&v.slot===CALL_SLOT).map(v=>v.cousin_name); }
+function dayHasCall(date) { return callVisitors(date).length>0; }
+
 function weekRelation() {
   const w = localDs(state.weekStart);
   if (w===currentMondayStr()) return 'current';
@@ -235,26 +246,56 @@ function weekRelation() {
 // ── RENDER HELPERS ─────────────────────────────────────────────────
 function pillHTML(name) { const c=cousinColor(name); return `<span class="pill" style="background:${c.bg};color:${c.text};">${name}</span>`; }
 
-// ── LONE AMAMA STATUS ──────────────────────────────────────────────
+// ── LONE AMAMA STATUS (7-level scaling) ───────────────────────────
 function renderAmamaStatus() {
   const dates = weekDates(state.weekStart);
-  const lonely = dates.filter(d=>dayVisitors(localDs(d)).length===0);
-  const all7 = lonely.length===7;
-  const none = lonely.length===0;
-  if (none) return `<div class="card" style="margin-bottom:8px;padding:14px 16px;background:var(--success-bg);border-color:var(--success-border);display:flex;align-items:center;gap:12px;">
-    <span style="font-size:28px;">🥰</span>
-    <div><div style="font-size:13px;font-weight:500;color:var(--success-text);">Amama está bien acompañada esta semana</div>
-    <div style="font-size:12px;color:var(--success-text);opacity:0.8;">Toda la semana cubierta</div></div></div>`;
-  if (all7) return `<div class="card" style="margin-bottom:8px;padding:14px 16px;background:var(--danger-bg);border-color:var(--danger-border);display:flex;align-items:center;gap:12px;">
-    <span style="font-size:28px;">😢</span>
-    <div><div style="font-size:13px;font-weight:500;color:var(--danger-text);">Amama está solita toda la semana</div>
-    <div style="font-size:12px;color:var(--danger-text);opacity:0.8;">¡Nadie se ha apuntado aún!</div></div></div>`;
-  const lonelyNames = lonely.map(d=>DAYS[dates.indexOf(d)]).join(', ');
-  const color = lonely.length>=4?'var(--danger':'var(--warn';
-  return `<div class="card" style="margin-bottom:8px;padding:14px 16px;background:${color}-bg);border-color:${color}-border);display:flex;align-items:center;gap:12px;">
-    <span style="font-size:28px;">${lonely.length>=4?'😔':'🙁'}</span>
-    <div><div style="font-size:13px;font-weight:500;color:${color}-text);">Amama estará sola ${lonely.length} días</div>
-    <div style="font-size:12px;color:${color}-text);opacity:0.8;">${lonelyNames}</div></div></div>`;
+  // A day counts as "covered" if there's a visit OR a call
+  const covered = dates.filter(d=>{
+    const dk=localDs(d);
+    return dayVisitors(dk).length>0 || dayHasCall(dk);
+  }).length;
+  const solo = 7 - covered;
+
+  const levels = [
+    // solo=7
+    { emoji:'😭', title:'Amama está solita toda la semana', sub:'¡Nadie se ha apuntado aún! Venga primos...', bg:'var(--danger-bg)', bc:'var(--danger-border)', tc:'var(--danger-text)' },
+    // solo=6
+    { emoji:'😢', title:'Amama estará casi sola esta semana', sub:'Solo hay 1 día con visita o llamada. ¡Podemos hacerlo mejor!', bg:'var(--danger-bg)', bc:'var(--danger-border)', tc:'var(--danger-text)' },
+    // solo=5
+    { emoji:'😔', title:'Amama tendrá pocos días acompañada', sub:'2 días cubiertos. Aún hay mucho por cubrir.', bg:'var(--danger-bg)', bc:'var(--danger-border)', tc:'var(--danger-text)' },
+    // solo=4
+    { emoji:'🙁', title:'Amama estará sola la mitad de la semana', sub:'3 días cubiertos. Vamos por el buen camino.', bg:'var(--warn-bg)', bc:'var(--warn-border)', tc:'var(--warn-text)' },
+    // solo=3
+    { emoji:'😊', title:'¡Bien! Amama tendrá buena semana', sub:'4 días cubiertos. Solo faltan 3 más.', bg:'var(--warn-bg)', bc:'var(--warn-border)', tc:'var(--warn-text)' },
+    // solo=2
+    { emoji:'😄', title:'¡Muy bien! Amama casi no estará sola', sub:'5 días cubiertos. Solo 2 días solos. ¡Casi!', bg:'var(--success-bg)', bc:'var(--success-border)', tc:'var(--success-text)' },
+    // solo=1
+    { emoji:'🤩', title:'¡Casi perfecta! Solo 1 día sola', sub:'6 días cubiertos. ¡A por el último!', bg:'var(--success-bg)', bc:'var(--success-border)', tc:'var(--success-text)' },
+    // solo=0
+    { emoji:'🥰', title:'¡Semana perfecta! Amama siempre acompañada', sub:'Todos los días cubiertos. ¡Sois los mejores primos!', bg:'var(--success-bg)', bc:'var(--success-border)', tc:'var(--success-text)' },
+  ];
+  const lv = levels[Math.min(solo, 7)] || levels[7];
+
+  // Progress bar
+  const pct = Math.round((covered/7)*100);
+  const lonelyNames = dates.filter(d=>!dayVisitors(localDs(d)).length&&!dayHasCall(localDs(d))).map((_,i)=>DAYS[i]).filter(Boolean);
+
+  return `<div class="card" style="margin-bottom:8px;padding:14px 16px;background:${lv.bg};border-color:${lv.bc};">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+      <span style="font-size:32px;">${lv.emoji}</span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;color:${lv.tc};">${lv.title}</div>
+        <div style="font-size:11px;color:${lv.tc};opacity:0.85;margin-top:2px;">${lv.sub}</div>
+      </div>
+    </div>
+    <div style="background:rgba(0,0,0,0.08);border-radius:4px;height:6px;overflow:hidden;">
+      <div style="height:6px;width:${pct}%;background:${lv.tc};border-radius:4px;transition:width 0.4s;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;">
+      <span style="font-size:10px;color:${lv.tc};opacity:0.8;">${covered}/7 días cubiertos</span>
+      ${covered<7?`<span style="font-size:10px;color:${lv.tc};opacity:0.8;">Faltan: ${dates.filter(d=>!dayVisitors(localDs(d)).length&&!dayHasCall(localDs(d))).map((_,i)=>DAYS_S[i]).join(' ')}</span>`:''}
+    </div>
+  </div>`;
 }
 
 // ── RENDER NAME SCREEN ─────────────────────────────────────────────
@@ -285,8 +326,11 @@ function renderHeader() {
   return `<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;margin-bottom:12px;border-bottom:0.5px solid var(--border);">
     <div><h1 style="font-size:17px;font-weight:600;margin:0;">Visitas a Amama</h1>
     <p style="font-size:11px;color:var(--text3);margin:2px 0 0;">Primos Agirrezabal</p></div>
-    ${myCol?`<button class="btn" onclick="changeName()" style="font-size:12px;display:flex;align-items:center;gap:5px;border:1.5px solid ${myCol.dot};color:${myCol.text};background:${myCol.bg};">
-      <span class="dot" style="background:${myCol.dot};"></span>${state.myName}</button>`:''}
+    <div style="display:flex;align-items:center;gap:6px;">
+      ${('Notification' in window)?`<button onclick="notifEnabled()?whatsappReminder():requestNotifications()" title="${notifEnabled()?'Enviarme recordatorio por WhatsApp':'Activar notificaciones'}" style="background:${notifEnabled()?'var(--success-bg)':'var(--bg2)'};border:0.5px solid ${notifEnabled()?'var(--success-border)':'var(--border)'};border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:14px;">${notifEnabled()?'📲':'🔔'}</button>`:''}
+      ${myCol?`<button class="btn" onclick="changeName()" style="font-size:12px;display:flex;align-items:center;gap:5px;border:1.5px solid ${myCol.dot};color:${myCol.text};background:${myCol.bg};">
+        <span class="dot" style="background:${myCol.dot};"></span>${state.myName}</button>`:''}
+    </div>
   </div>`;
 }
 
@@ -318,10 +362,12 @@ function renderWeek() {
   </div>`;
   html+=`<div class="strip">`;
   dates.forEach((d,i)=>{
-    const isT=localDs(d)===today, acc=dayVisitors(localDs(d)).length>0;
+    const dk=localDs(d), isT=dk===today;
+    const acc=dayVisitors(dk).length>0, hasCall=dayHasCall(dk)&&!acc;
     html+=`<div class="strip-day" style="border-color:${isT?'var(--info-border)':'transparent'};">
       <div style="font-size:10px;color:${isT?'var(--info-text)':'var(--text3)'};">${DAYS_S[i]}</div>
-      <span class="dot" style="background:${acc?'var(--success-text)':'var(--border2)'};margin:3px auto;display:block;"></span>
+      <span style="display:block;margin:3px auto;text-align:center;font-size:${hasCall?'10px':'0px'};line-height:${hasCall?'1':'0'};">${hasCall?'📞':''}</span>
+      <span class="dot" style="background:${acc?'var(--success-text)':hasCall?'var(--warn-text)':'var(--border2)'};margin:${hasCall?'0':'3px'} auto;display:block;"></span>
     </div>`;
   });
   html+=`</div>`;
@@ -360,7 +406,18 @@ function renderWeek() {
         ${names?`<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-top:5px;gap:1px;">${names}</div>`:''}
       </button>`;
     });
-    html+=`</div></div>`;
+    html+=`</div>`;
+    // Call toggle row
+    const callVis=callVisitors(dkey), iAmCalling=state.myName&&callVis.includes(state.myName);
+    const callNames=callVis.map(pillHTML).join('');
+    html+=`<div style="padding:0 8px 8px;">
+      <button onclick="toggleVisit('${dkey}','call')" style="width:100%;border-radius:var(--radius);padding:8px 12px;font-family:inherit;font-size:12px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;border:${iAmCalling?'1.5px solid var(--info-border)':'0.5px solid var(--border)'};background:${iAmCalling?'var(--info-bg)':'var(--bg2)'};">
+        <span style="font-size:14px;">📞</span>
+        <span style="font-weight:500;color:${iAmCalling?'var(--info-text)':'var(--text2)'};">Llamada telefónica</span>
+        ${callNames?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-left:4px;">${callNames}</div>`:''}
+        ${iAmCalling?`<span style="margin-left:auto;font-size:10px;font-weight:500;color:var(--info-text);">✓ apuntado</span>`:`<span style="margin-left:auto;font-size:10px;color:var(--text3);">Toca para apuntarte</span>`}
+      </button>
+    </div></div>`;
   });
   return html;
 }
@@ -778,7 +835,7 @@ function renderLegend() {
             return `<div class="name-badge" style="background:${col.bg};border:${isMe?'1.5px':'0.5px'} solid ${col.dot}50;gap:4px;">
               <span class="dot" style="background:${col.dot};"></span>
               <span style="font-size:12px;color:${col.text};font-weight:${isMe?'500':'400'};">${c.name}${isMe?' (tú)':''}</span>
-              ${editing?`<button onclick="deleteCousin('${c.name}')" style="background:none;border:none;cursor:pointer;font-size:14px;line-height:1;color:var(--danger-text);padding:0 2px;margin-left:2px;">×</button>`:''}
+              ${editing?`<button data-del="${c.name}" onclick="event.stopPropagation();deleteCousin(this.dataset.del)" style="background:none;border:none;cursor:pointer;font-size:16px;line-height:1;color:var(--danger-text);padding:0 4px;margin-left:2px;">×</button>`:''}
             </div>`;
           }).join('')
         : `<span style="font-size:12px;color:var(--text3);">Nadie se ha apuntado aún.</span>`}
@@ -804,6 +861,139 @@ async function init() {
   catch(e) { console.error(e); document.getElementById('root').innerHTML=`<div style="padding:32px;text-align:center;color:var(--danger-text);">Error conectando. Revisa la consola.</div>`; }
 }
 init();
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────
+async function requestNotifications() {
+  if (!('Notification' in window)) { alert('Tu navegador no soporta notificaciones.'); return; }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    localStorage.setItem('notif_enabled', '1');
+    scheduleVisitReminders();
+    new Notification('Visitas a Amama', { body: '¡Notificaciones activadas! Te avisaremos el día antes de tus visitas.', icon: 'icon-192.png' });
+    render();
+  }
+}
+
+function notifEnabled() {
+  return Notification.permission === 'granted' && localStorage.getItem('notif_enabled') === '1';
+}
+
+function scheduleVisitReminders() {
+  if (!notifEnabled() || !state.myName) return;
+  // Find upcoming visits for me in next 7 days
+  const dates = weekDates(state.weekStart);
+  dates.forEach(d => {
+    const dk = localDs(d);
+    const allSlots = [...SLOTS.map(s=>s.id), 'call'];
+    const iAmGoing = allSlots.some(sid => slotVisitors(dk,sid).includes(state.myName) || callVisitors(dk).includes(state.myName));
+    if (!iAmGoing) return;
+    // Notify at 9am the day before
+    const visitDate = new Date(dk+'T09:00:00');
+    visitDate.setDate(visitDate.getDate()-1);
+    const now = new Date();
+    const delay = visitDate - now;
+    if (delay > 0 && delay < 7*24*60*60*1000) {
+      setTimeout(() => {
+        if (notifEnabled()) {
+          new Notification('Visitas a Amama 📅', { body: `¡Mañana tienes visita a Amama! (${DAYS[dates.indexOf(d)]})`, icon: 'icon-192.png' });
+        }
+      }, delay);
+    }
+  });
+}
+
+function whatsappReminder() {
+  if (!state.myName) return;
+  const dates = weekDates(state.weekStart);
+  const myVisits = [];
+  dates.forEach(d => {
+    const dk = localDs(d), di = dates.indexOf(d);
+    const slots = SLOTS.filter(s=>slotVisitors(dk,s.id).includes(state.myName)).map(s=>s.label);
+    const hasCalls = callVisitors(dk).includes(state.myName);
+    if (slots.length) myVisits.push(`${DAYS[di]} (${slots.join(' y ')})`);
+    if (hasCalls) myVisits.push(`${DAYS[di]} (llamada)`);
+  });
+  if (!myVisits.length) { alert('No tienes visitas planificadas esta semana.'); return; }
+  const msg = `🏠 Recordatorio visitas a Amama:%0A${myVisits.map(v=>'• '+v).join('%0A')}%0A%0A¡A por ella! 🥰`;
+  window.open('https://wa.me/?text='+msg, '_blank');
+}
+
+// ── PWA INSTALL PROMPT ────────────────────────────────────────────
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show banner after 1.5s
+  setTimeout(() => showInstallBanner('android'), 1500);
+});
+
+window.addEventListener('appinstalled', () => {
+  hideInstallBanner();
+  localStorage.setItem('pwa_dismissed', '1');
+  deferredPrompt = null;
+});
+
+function showInstallBanner(type) {
+  // Don't show if already installed (standalone mode)
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+  if (localStorage.getItem('pwa_dismissed')) return;
+
+  let banner = document.getElementById('install-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'install-banner';
+    banner.className = 'install-banner';
+    document.body.appendChild(banner);
+  }
+
+  if (type === 'ios') {
+    banner.innerHTML = `
+      <div style="font-size:28px;flex-shrink:0;">🏠</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;margin-bottom:2px;">Instala la app en tu móvil</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.5;">Toca <strong>Compartir</strong> <span style="font-size:13px;">⬆️</span> y luego <strong>"Añadir a pantalla de inicio"</strong></div>
+      </div>
+      <button onclick="hideInstallBanner()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3);padding:4px;flex-shrink:0;">×</button>`;
+  } else {
+    banner.innerHTML = `
+      <div style="font-size:28px;flex-shrink:0;">🏠</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;margin-bottom:2px;">Instala la app en tu móvil</div>
+        <div style="font-size:11px;color:var(--text2);">Tenla siempre a mano en la pantalla de inicio</div>
+      </div>
+      <button onclick="installPWA()" style="background:var(--info-bg);border:1px solid var(--info-border);color:var(--info-text);border-radius:var(--radius);padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;flex-shrink:0;font-family:inherit;">Instalar</button>
+      <button onclick="hideInstallBanner()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3);padding:4px;flex-shrink:0;">×</button>`;
+  }
+
+  requestAnimationFrame(() => { banner.classList.add('show'); });
+}
+
+function hideInstallBanner() {
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.classList.remove('show');
+  localStorage.setItem('pwa_dismissed', '1');
+}
+
+async function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  hideInstallBanner(); // marca como visto independientemente de si acepta o no
+  deferredPrompt = null;
+}
+
+// iOS detection
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+if (isIOS && !isInStandalone && !localStorage.getItem('pwa_dismissed')) {
+  setTimeout(() => showInstallBanner('ios'), 1500);
+}
+
+// Service worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 </script>
 
 <!--

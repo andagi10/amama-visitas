@@ -931,7 +931,7 @@ function showInstallGuide() {
 
   const iosSteps = `
     <div style="display:flex;flex-direction:column;gap:8px;">
-      ${step(1, 'Abre esta página en <strong>Safari</strong> (no Chrome ni otro navegador)', 'var(--info-bg)')}
+      ${step(1, 'Abre esta página en <strong>Safari</strong> en tu iPhone', 'var(--info-bg)')}
       ${step(2, 'Toca el botón <strong>Compartir</strong> — es el icono de cuadrado con flecha hacia arriba <span style="font-size:16px;">⬆️</span> que está en la barra de abajo del navegador', 'var(--info-bg)')}
       ${step(3, 'Desplázate hacia abajo en el menú y toca <strong>"Añadir a pantalla de inicio"</strong> <span style="font-size:14px;">🏠</span>', 'var(--info-bg)')}
       ${step(4, 'Toca <strong>"Añadir"</strong> arriba a la derecha para confirmar', 'var(--info-bg)')}
@@ -1007,11 +1007,18 @@ function scheduleVisitReminders() {
     const sameDay9am = new Date(dk+'T09:00:00');
     const oneHourBefore = new Date(visitDateTime.getTime()-60*60*1000);
     const now = new Date();
+    const isCallOnly = mySlots.length === 1 && mySlots[0] === CALL_SLOT;
+    const sameDay9pm = new Date(dk+'T21:00:00');
+
     const schedule = [
       {time:dayBefore9am,  title:'Visitas a Amama 📅', body:`Mañana (${dayName}) tienes ${what} con Amama a las ${slotTimeStr}h`},
       {time:sameDay9am,    title:'Visitas a Amama ☀️', body:`Hoy tienes ${what} con Amama a las ${slotTimeStr}h`},
-      {time:oneHourBefore, title:'Visitas a Amama ⏰', body:`En 1 hora tienes ${what} con Amama (${slotTimeStr}h)`},
-      {time:visitDateTime, title:'Visitas a Amama 🏠', body:`¡Ahora toca! Tienes ${what} con Amama`},
+      ...(!isCallOnly ? [
+        {time:oneHourBefore, title:'Visitas a Amama ⏰', body:`En 1 hora tienes ${what} con Amama (${slotTimeStr}h)`},
+        {time:visitDateTime, title:'Visitas a Amama 🏠', body:`¡Ahora toca! Tienes ${what} con Amama`},
+      ] : [
+        {time:sameDay9pm,    title:'Visitas a Amama 📞', body:`¿Ya has llamado a Amama hoy? (${dayName})`},
+      ]),
     ];
     schedule.forEach(({time,title,body})=>{
       const delay=time-now;
@@ -1061,8 +1068,31 @@ function showInstallBanner(type) {
 function hideInstallBanner() { const b=document.getElementById('install-banner'); if(b) b.classList.remove('show'); localStorage.setItem('pwa_dismissed','1'); }
 async function installPWA() { if(!deferredPrompt) return; deferredPrompt.prompt(); const {outcome}=await deferredPrompt.userChoice; hideInstallBanner(); deferredPrompt=null; }
 
-// Service worker
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+// Service worker — auto-update on new version
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    // Check for updates every time the app opens
+    reg.update();
+
+    // When a new SW is waiting, activate it immediately
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      if (!newSW) return;
+      newSW.addEventListener('statechange', () => {
+        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+          // New version ready — reload to get it
+          newSW.postMessage('skipWaiting');
+        }
+      });
+    });
+  }).catch(() => {});
+
+  // When SW takes control, reload the page to use new version
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; location.reload(); }
+  });
+}
 
 // iOS banner
 const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;

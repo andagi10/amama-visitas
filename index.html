@@ -684,687 +684,11 @@ function renderDashGeneral() {
   html+=`</div></div>`;
 
   return html;
-}<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Visitas a Amama — Agirrezabal</title>
-<link rel="manifest" href="manifest.json">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Amama">
-<meta name="theme-color" content="#1a1a18">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg:#ffffff; --bg2:#f5f5f4; --bg3:#eeede8;
-  --border:rgba(0,0,0,0.1); --border2:rgba(0,0,0,0.18);
-  --text:#1a1a18; --text2:#6b6b66; --text3:#a0a09a;
-  --info-bg:#e6f1fb; --info-text:#0c447c; --info-border:#85b7eb;
-  --success-bg:#eaf3de; --success-text:#27500a; --success-border:#97c459;
-  --warn-bg:#faeeda; --warn-text:#633806; --warn-border:#ef9f27;
-  --danger-bg:#fcebeb; --danger-text:#791f1f; --danger-border:#f09595;
-  --radius:8px; --radius-lg:12px;
-}
-@media (prefers-color-scheme:dark) {
-  :root {
-    --bg:#1c1c1a; --bg2:#242422; --bg3:#2e2e2b;
-    --border:rgba(255,255,255,0.1); --border2:rgba(255,255,255,0.18);
-    --text:#f0efea; --text2:#a0a099; --text3:#666660;
-    --info-bg:#042c53; --info-text:#b5d4f4; --info-border:#185fa5;
-    --success-bg:#173404; --success-text:#c0dd97; --success-border:#3b6d11;
-    --warn-bg:#412402; --warn-text:#fac775; --warn-border:#854f0b;
-    --danger-bg:#501313; --danger-text:#f7c1c1; --danger-border:#a32d2d;
-  }
-}
-body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg3); color:var(--text); min-height:100vh; }
-.app { max-width:520px; margin:0 auto; padding:16px 12px 40px; }
-button { cursor:pointer; font-family:inherit; }
-.btn { border:0.5px solid var(--border2); background:var(--bg); border-radius:var(--radius); padding:7px 14px; font-size:13px; color:var(--text); transition:background 0.1s; }
-.btn:hover { background:var(--bg2); }
-.btn:active { transform:scale(0.98); }
-.btn-info { background:var(--info-bg); border-color:var(--info-border); color:var(--info-text); }
-.btn-nav { border:0.5px solid var(--border); background:var(--bg); border-radius:var(--radius); padding:4px 12px; font-size:18px; line-height:1; color:var(--text); }
-.card { background:var(--bg); border:0.5px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:8px; }
-.card.today { border:1.5px solid var(--info-border); }
-.tab-bar { display:flex; gap:4px; padding:4px; background:var(--bg2); border-radius:var(--radius); }
-.tab { border:none; background:transparent; border-radius:var(--radius); padding:6px 10px; font-size:13px; color:var(--text2); transition:all 0.15s; flex:1; }
-.tab.active { background:var(--bg); border:0.5px solid var(--border2); color:var(--text); font-weight:500; }
-.slot-btn { flex:1; cursor:pointer; border-radius:var(--radius); padding:10px 4px; text-align:center; font-family:inherit; font-size:12px; transition:opacity 0.12s; }
-.slot-btn:hover { opacity:0.82; }
-.pill { display:inline-flex; align-items:center; padding:2px 7px; border-radius:20px; font-size:11px; font-weight:500; margin:1px; }
-.mcell { border:0.5px solid var(--border); border-radius:var(--radius); padding:5px; min-height:70px; cursor:pointer; overflow:hidden; transition:background 0.1s; }
-.mcell:hover { background:var(--bg2); }
-.mcell.today { border:1.5px solid var(--info-border); }
-.mcell.faded { opacity:0.25; pointer-events:none; }
-.name-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; }
-.dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
-.strip { display:flex; gap:4px; padding:7px 8px; background:var(--bg2); border-radius:var(--radius); margin-bottom:12px; }
-.strip-day { flex:1; text-align:center; padding:4px 2px; border-radius:6px; border:0.5px solid transparent; }
-input,textarea { font-family:inherit; font-size:13px; color:var(--text); background:var(--bg); border:0.5px solid var(--border2); border-radius:var(--radius); padding:8px 12px; outline:none; }
-input:focus,textarea:focus { border-color:var(--info-border); box-shadow:0 0 0 2px var(--info-bg); }
-.stat-card { background:var(--bg2); border-radius:var(--radius); padding:12px 14px; flex:1; min-width:0; }
-.bar-wrap { background:var(--bg2); border-radius:4px; height:8px; overflow:hidden; margin-top:6px; }
-.bar-fill { height:8px; border-radius:4px; transition:width 0.4s; }
-.install-banner { position:fixed; bottom:0; left:0; right:0; z-index:999; padding:12px 16px 20px; background:var(--bg); border-top:1px solid var(--border2); box-shadow:0 -4px 20px rgba(0,0,0,0.12); display:flex; align-items:center; gap:12px; transform:translateY(100%); transition:transform 0.3s ease; }
-.install-banner.show { transform:translateY(0); }
-</style>
-</head>
-<body>
-<div class="app" id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--text3);">Cargando…</div></div>
-<script>
-const SUPABASE_URL  = 'https://stmwwseuoubmqpmpkunu.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0bXd3c2V1b3VibXFwbXBrdW51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NjcyMDgsImV4cCI6MjA4OTM0MzIwOH0.zBmhQi9-Cugd55SMInDoqzuZpyAhePzhpqHnGBD89lw';
-
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-
-const DAYS   = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
-const DAYS_S = ['L','M','X','J','V','S','D'];
-const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const SLOTS  = [{id:'morning',label:'Mañana',time:'10–14h'},{id:'afternoon',label:'Tarde',time:'16–20h'},{id:'evening',label:'Noche',time:'20–22h'}];
-const CALL_SLOT = 'call'; // separate slot for phone calls
-const COLORS = [
-  {dot:'#7F77DD',bg:'#EEEDFE',text:'#3C3489'},{dot:'#1D9E75',bg:'#E1F5EE',text:'#085041'},
-  {dot:'#D85A30',bg:'#FAECE7',text:'#712B13'},{dot:'#D4537E',bg:'#FBEAF0',text:'#72243E'},
-  {dot:'#378ADD',bg:'#E6F1FB',text:'#0C447C'},{dot:'#639922',bg:'#EAF3DE',text:'#27500A'},
-  {dot:'#BA7517',bg:'#FAEEDA',text:'#633806'},{dot:'#E24B4A',bg:'#FCEBEB',text:'#791F1F'},
-  {dot:'#888780',bg:'#F1EFE8',text:'#444441'}
-];
-
-const ADMIN_NAME = 'Ander';
-const ADMIN_PASS = 'agirrezabal'; // cámbiala aquí
-
-// ── LOCAL DATE HELPERS (no UTC drift) ──────────────────────────────
-function localDs(d) {
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-function mondayOf(d) {
-  const x = new Date(d); x.setHours(0,0,0,0);
-  const dow = x.getDay(); x.setDate(x.getDate()-(dow===0?6:dow-1)); return x;
-}
-function weekDates(mon) {
-  return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(d.getDate()+i);return d;});
-}
-function fmt(d) { return d.toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
-function todayStr() { return localDs(new Date()); }
-function currentMonday() { return mondayOf(new Date()); }
-function currentMondayStr() { return localDs(currentMonday()); }
-function nextMondayStr() { const x=currentMonday(); x.setDate(x.getDate()+7); return localDs(x); }
-
-function weekLabel(offsetWeeks){
-  const mon=mondayOf(new Date()); mon.setDate(mon.getDate()-offsetWeeks*7);
-  if(offsetWeeks===0)return 'Esta sem.';
-  if(offsetWeeks===1)return 'Sem. ant.';
-  return fmt(mon);
-}
-
-// ── STATE ──────────────────────────────────────────────────────────
-const state = {
-  myName: localStorage.getItem('amama_name')||null,
-  cousins:[], visits:[], notes:{},
-  view:'week',
-  weekStart: mondayOf(new Date()),
-  monthRef: {y:new Date().getFullYear(),m:new Date().getMonth()},
-  activeNoteDay:null,
-  editingCousins:false,
-  dashSub:'general',   // 'general' | 'cousin'
-  dashCousin:null       // selected cousin name for detail view
-};
-
-// ── SUPABASE ───────────────────────────────────────────────────────
-async function loadAll() {
-  const [cv,vv,nv] = await Promise.all([
-    db.from('cousins').select('*').order('created_at'),
-    db.from('visits').select('*'),
-    db.from('notes').select('*')
-  ]);
-  state.cousins = cv.data||[];
-  state.visits  = vv.data||[];
-  const nm={}; (nv.data||[]).forEach(n=>nm[n.date]=n.note); state.notes=nm;
-}
-
-async function ensureCousin(name) {
-  if (state.cousins.find(c=>c.name===name)) return;
-  const ci = state.cousins.length;
-  const {data} = await db.from('cousins').insert({name,color_index:ci}).select().single();
-  if (data) state.cousins.push(data);
-}
-
-async function deleteCousin(name) {
-  if (!confirm('¿Borrar a ' + name + ' y todas sus visitas?')) return;
-  if (name === state.myName) { state.myName=null; localStorage.removeItem('amama_name'); }
-
-  // Delete visits
-  const {error: errV} = await db.from('visits').delete().eq('cousin_name', name);
-  if (errV) { alert('Error borrando visitas: ' + (errV.message||JSON.stringify(errV))); return; }
-  state.visits = state.visits.filter(v=>v.cousin_name!==name);
-
-  // Delete cousin
-  const cousin = state.cousins.find(c=>c.name===name);
-  if (cousin) {
-    const {error: errC} = await db.from('cousins').delete().eq('id', cousin.id);
-    if (errC) { alert('Error borrando primo: ' + (errC.message||JSON.stringify(errC))); return; }
-  }
-  state.cousins = state.cousins.filter(c=>c.name!==name);
-  render();
-}
-
-async function toggleVisit(date, slot) {
-  if (!state.myName) return;
-  const existing = state.visits.find(v=>v.date===date&&v.slot===slot&&v.cousin_name===state.myName);
-  if (existing) {
-    // Guard: if still a temp id (insert never confirmed), just remove locally
-    if (String(existing.id).startsWith('temp_')) {
-      state.visits = state.visits.filter(v=>v.id!==existing.id);
-      render(); return;
-    }
-    // Optimistic: remove immediately
-    state.visits = state.visits.filter(v=>v.id!==existing.id);
-    render();
-    const {error} = await db.from('visits').delete().eq('id', existing.id);
-    if (error) {
-      console.error('Error borrando visita:', JSON.stringify(error));
-      state.visits.push(existing); // rollback
-      render();
-      alert('Error al borrar: ' + (error.message||error.details||JSON.stringify(error)));
-    }
-  } else {
-    // Optimistic: add with temp id
-    const tempId = 'temp_'+Date.now();
-    const tempVisit = {id:tempId, date, slot, cousin_name:state.myName};
-    state.visits.push(tempVisit);
-    render();
-    const {data, error} = await db.from('visits').insert({date,slot,cousin_name:state.myName}).select().single();
-    if (error) {
-      console.error('Error guardando visita:', error);
-      state.visits = state.visits.filter(v=>v.id!==tempId); // rollback
-      render();
-      const msg = error.message || error.details || error.hint || JSON.stringify(error);
-      console.error('Full error:', JSON.stringify(error));
-      alert('Error al guardar: ' + msg + '\n\nDetalles en la consola (F12).');
-    } else if (data) {
-      // Replace temp with real record
-      const idx = state.visits.findIndex(v=>v.id===tempId);
-      if (idx>=0) state.visits[idx]=data;
-    }
-  }
-}
-
-async function saveNote(date, text) {
-  const t=(text||'').trim();
-  if(t){ await db.from('notes').upsert({date,note:t},{onConflict:'date'}); state.notes[date]=t; }
-  else { await db.from('notes').delete().eq('date',date); delete state.notes[date]; }
-  state.activeNoteDay=null; render();
-}
-
-// ── ACTIONS ────────────────────────────────────────────────────────
-async function setName(name) {
-  name=(name||'').trim(); if(!name)return;
-  if(name===ADMIN_NAME){
-    const pass=prompt('Contraseña de Ander:');
-    if(pass!==ADMIN_PASS){ alert('Contraseña incorrecta.'); return; }
-  }
-  state.myName=name; localStorage.setItem('amama_name',name);
-  await ensureCousin(name); render();
-}
-function changeName() { state.myName=null; localStorage.removeItem('amama_name'); render(); }
-function toggleEditingCousins() { state.editingCousins=!state.editingCousins; render(); }
-function setView(v) { state.view=v; render(); }
-function changeWeek(d) { const x=new Date(state.weekStart); x.setDate(x.getDate()+d*7); state.weekStart=mondayOf(x); state.view='week'; render(); }
-function goCurrentWeek() { state.weekStart=mondayOf(new Date()); state.view='week'; render(); }
-function goNextWeek() { const x=mondayOf(new Date()); x.setDate(x.getDate()+7); state.weekStart=x; state.view='week'; render(); }
-function changeMonth(d) { let {y,m}=state.monthRef; m+=d; if(m>11){m=0;y++;}if(m<0){m=11;y--;} state.monthRef={y,m}; render(); }
-function openNote(date) { state.activeNoteDay=date; render(); }
-function cancelNote() { state.activeNoteDay=null; render(); }
-
-// ── DATA HELPERS ───────────────────────────────────────────────────
-function cousinColor(name) { const c=state.cousins.find(x=>x.name===name); return c?COLORS[c.color_index%COLORS.length]:COLORS[8]; }
-function slotVisitors(date,slot) { return state.visits.filter(v=>v.date===date&&v.slot===slot).map(v=>v.cousin_name); }
-function dayVisitors(date) { const n=[]; state.visits.filter(v=>v.date===date).forEach(v=>{if(!n.includes(v.cousin_name))n.push(v.cousin_name);}); return n; }
-
-function callVisitors(date) { return state.visits.filter(v=>v.date===date&&v.slot===CALL_SLOT).map(v=>v.cousin_name); }
-function dayHasCall(date) { return callVisitors(date).length>0; }
-
-function weekRelation() {
-  const w = localDs(state.weekStart);
-  if (w===currentMondayStr()) return 'current';
-  if (w===nextMondayStr()) return 'next';
-  return state.weekStart < mondayOf(new Date()) ? 'past' : 'future';
-}
-
-// ── RENDER HELPERS ─────────────────────────────────────────────────
-function pillHTML(name) { const c=cousinColor(name); return `<span class="pill" style="background:${c.bg};color:${c.text};">${name}</span>`; }
-
-// ── LONE AMAMA STATUS (7-level scaling) ───────────────────────────
-function renderAmamaStatus() {
-  const dates = weekDates(state.weekStart);
-  // A day counts as "covered" if there's a visit OR a call
-  const covered = dates.filter(d=>{
-    const dk=localDs(d);
-    return dayVisitors(dk).length>0 || dayHasCall(dk);
-  }).length;
-  const solo = 7 - covered;
-
-  const levels = [
-    // solo=7
-    { emoji:'😭', title:'Amama está solita toda la semana', sub:'¡Nadie se ha apuntado aún! Venga primos...', bg:'var(--danger-bg)', bc:'var(--danger-border)', tc:'var(--danger-text)' },
-    // solo=6
-    { emoji:'😢', title:'Amama estará casi sola esta semana', sub:'Solo hay 1 día con visita o llamada. ¡Podemos hacerlo mejor!', bg:'var(--danger-bg)', bc:'var(--danger-border)', tc:'var(--danger-text)' },
-    // solo=5
-    { emoji:'😔', title:'Amama tendrá pocos días acompañada', sub:'2 días cubiertos. Aún hay mucho por cubrir.', bg:'var(--danger-bg)', bc:'var(--danger-border)', tc:'var(--danger-text)' },
-    // solo=4
-    { emoji:'🙁', title:'Amama estará sola la mitad de la semana', sub:'3 días cubiertos. Vamos por el buen camino.', bg:'var(--warn-bg)', bc:'var(--warn-border)', tc:'var(--warn-text)' },
-    // solo=3
-    { emoji:'😊', title:'¡Bien! Amama tendrá buena semana', sub:'4 días cubiertos. Solo faltan 3 más.', bg:'var(--warn-bg)', bc:'var(--warn-border)', tc:'var(--warn-text)' },
-    // solo=2
-    { emoji:'😄', title:'¡Muy bien! Amama casi no estará sola', sub:'5 días cubiertos. Solo 2 días solos. ¡Casi!', bg:'var(--success-bg)', bc:'var(--success-border)', tc:'var(--success-text)' },
-    // solo=1
-    { emoji:'🤩', title:'¡Casi perfecta! Solo 1 día sola', sub:'6 días cubiertos. ¡A por el último!', bg:'var(--success-bg)', bc:'var(--success-border)', tc:'var(--success-text)' },
-    // solo=0
-    { emoji:'🥰', title:'¡Semana perfecta! Amama siempre acompañada', sub:'Todos los días cubiertos. ¡Sois los mejores primos!', bg:'var(--success-bg)', bc:'var(--success-border)', tc:'var(--success-text)' },
-  ];
-  const lv = levels[7 - Math.min(solo, 7)] || levels[0];
-
-  // Progress bar
-  const pct = Math.round((covered/7)*100);
-  const lonelyNames = dates.map((d,i)=>({d,i})).filter(({d})=>!dayVisitors(localDs(d)).length&&!dayHasCall(localDs(d))).map(({i})=>DAYS[i]);
-
-  return `<div class="card" style="margin-bottom:8px;padding:14px 16px;background:${lv.bg};border-color:${lv.bc};">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-      <span style="font-size:32px;">${lv.emoji}</span>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:500;color:${lv.tc};">${lv.title}</div>
-        <div style="font-size:11px;color:${lv.tc};opacity:0.85;margin-top:2px;">${lv.sub}</div>
-      </div>
-    </div>
-    <div style="background:rgba(0,0,0,0.08);border-radius:4px;height:6px;overflow:hidden;">
-      <div style="height:6px;width:${pct}%;background:${lv.tc};border-radius:4px;transition:width 0.4s;"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;">
-      <span style="font-size:10px;color:${lv.tc};opacity:0.8;">${covered}/7 días cubiertos</span>
-      ${covered<7?`<span style="font-size:10px;color:${lv.tc};opacity:0.8;">Faltan: ${dates.map((d,i)=>({d,i})).filter(({d})=>!dayVisitors(localDs(d)).length&&!dayHasCall(localDs(d))).map(({i})=>DAYS_S[i]).join(' ')}</span>`:''}
-    </div>
-  </div>`;
-}
-
-// ── RENDER NAME SCREEN ─────────────────────────────────────────────
-function renderNameScreen() {
-  let ch='';
-  if(state.cousins.length){
-    ch=`<p style="font-size:12px;color:var(--text3);margin:0 0 8px;">¿Eres tú?</p><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">`;
-    ch+=state.cousins.map(c=>{const col=COLORS[c.color_index%COLORS.length];return `<button class="btn" onclick="setName('${c.name}')" style="border:1.5px solid ${col.dot};color:${col.text};background:${col.bg};">${c.name}</button>`;}).join('');
-    ch+=`</div><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="flex:1;height:0.5px;background:var(--border)"></div><span style="font-size:11px;color:var(--text3);">o soy nuevo/a</span><div style="flex:1;height:0.5px;background:var(--border)"></div></div>`;
-  } else {
-    ch=`<p style="font-size:13px;color:var(--text2);margin:0 0 16px;">¡Sé el primero en apuntarte!</p>`;
-  }
-  return `<div style="display:flex;align-items:center;justify-content:center;min-height:80vh;">
-    <div class="card" style="padding:28px 24px;max-width:360px;width:100%;border-radius:var(--radius-lg);">
-      <div style="width:44px;height:44px;border-radius:50%;background:var(--warn-bg);display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--warn-text)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      </div>
-      <h2 style="font-size:18px;font-weight:500;margin:0 0 6px;">Visitas a Amama</h2>
-      <p style="font-size:13px;color:var(--text2);margin:0 0 20px;line-height:1.6;">Primos Agirrezabal — organicemos las visitas para que no esté sola.</p>
-      ${ch}
-      <div style="display:flex;gap:8px;"><input id="ni" type="text" placeholder="Tu nombre..." style="flex:1;" onkeydown="if(event.key==='Enter')setName(this.value)"/><button class="btn btn-info" onclick="setName(document.getElementById('ni').value)">Entrar</button></div>
-    </div></div>`;
-}
-
-// ── RENDER HEADER ──────────────────────────────────────────────────
-function renderHeader() {
-  const myCol=state.myName?cousinColor(state.myName):null;
-  return `<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;margin-bottom:12px;border-bottom:0.5px solid var(--border);">
-    <div><h1 style="font-size:17px;font-weight:600;margin:0;">Visitas a Amama</h1>
-    <p style="font-size:11px;color:var(--text3);margin:2px 0 0;">Primos Agirrezabal</p></div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <div style="display:flex;gap:4px;">
-        <button onclick="handleNotifBtn()" title="${notifEnabled()?'Recordatorio WhatsApp':isInstalledPWA()?'Activar notificaciones':'Instalar app para notificaciones'}" style="background:${notifEnabled()?'var(--success-bg)':isInstalledPWA()?'var(--bg2)':'var(--warn-bg)'};border:0.5px solid ${notifEnabled()?'var(--success-border)':isInstalledPWA()?'var(--border)':'var(--warn-border)'};border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:14px;">${notifEnabled()?'📲':isInstalledPWA()?'🔔':'📲'}</button>
-        ${notifEnabled()?`<button onclick="disableNotifications()" title="Desactivar notificaciones" style="background:var(--danger-bg);border:0.5px solid var(--danger-border);border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:12px;color:var(--danger-text);">✕</button>`:''}
-      </div>
-      ${myCol?`<button class="btn" onclick="changeName()" style="font-size:12px;display:flex;align-items:center;gap:5px;border:1.5px solid ${myCol.dot};color:${myCol.text};background:${myCol.bg};">
-        <span class="dot" style="background:${myCol.dot};"></span>${state.myName}</button>`:''}
-    </div>
-  </div>`;
-}
-
-// ── RENDER TABS ────────────────────────────────────────────────────
-function renderTabs() {
-  const rel=weekRelation();
-  const isW=state.view==='week', isM=state.view==='month', isDash=state.view==='dash';
-  const isCurr=isW&&rel==='current', isNext=isW&&rel==='next', isHist=isW&&(rel==='past'||rel==='future');
-  return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">
-    <div class="tab-bar" style="flex:1;">
-      <button class="tab ${isCurr?'active':''}" onclick="goCurrentWeek()">Esta semana</button>
-      <button class="tab ${isNext?'active':''}" onclick="goNextWeek()">Próx. semana</button>
-      <button class="tab ${isM?'active':''}" onclick="setView('month')">Mes</button>
-      <button class="tab ${isDash?'active':''}" onclick="setView('dash')">Stats</button>
-    </div>
-    ${isHist?`<span style="font-size:11px;padding:3px 8px;border-radius:20px;background:var(--warn-bg);color:var(--warn-text);white-space:nowrap;flex-shrink:0;">${rel==='past'?'Historial':'Futuro'}</span>`:''}
-  </div>`;
-}
-
-// ── RENDER WEEK ────────────────────────────────────────────────────
-function renderWeek() {
-  const dates=weekDates(state.weekStart);
-  const today=todayStr();
-  let html = renderAmamaStatus();
-  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <button class="btn-nav" onclick="changeWeek(-1)">‹</button>
-    <div style="text-align:center;"><div style="font-size:13px;font-weight:500;">${fmt(dates[0])} – ${fmt(dates[6])}</div></div>
-    <button class="btn-nav" onclick="changeWeek(1)">›</button>
-  </div>`;
-  html+=`<div class="strip">`;
-  dates.forEach((d,i)=>{
-    const dk=localDs(d), isT=dk===today;
-    const acc=dayVisitors(dk).length>0, hasCall=dayHasCall(dk)&&!acc;
-    html+=`<div class="strip-day" style="border-color:${isT?'var(--info-border)':'transparent'};">
-      <div style="font-size:10px;color:${isT?'var(--info-text)':'var(--text3)'};">${DAYS_S[i]}</div>
-      <span style="display:block;margin:3px auto;text-align:center;font-size:${hasCall?'10px':'0px'};line-height:${hasCall?'1':'0'};">${hasCall?'📞':''}</span>
-      <span class="dot" style="background:${acc?'var(--success-text)':hasCall?'var(--warn-text)':'var(--border2)'};margin:${hasCall?'0':'3px'} auto;display:block;"></span>
-    </div>`;
-  });
-  html+=`</div>`;
-  dates.forEach((d,di)=>{
-    const dkey=localDs(d), isT=dkey===today, note=state.notes[dkey]||'', isEditing=state.activeNoteDay===dkey;
-    html+=`<div class="card${isT?' today':''}">
-      <div style="padding:9px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:14px;font-weight:500;color:${isT?'var(--info-text)':'var(--text)'};">${DAYS[di]}</span>
-          <span style="font-size:12px;color:var(--text3);">${fmt(d)}</span>
-          ${isT?`<span style="font-size:11px;padding:2px 6px;background:var(--info-bg);color:var(--info-text);border-radius:var(--radius);">hoy</span>`:''}
-        </div>
-        <button class="btn" onclick="openNote('${dkey}')" style="font-size:11px;padding:3px 8px;color:${note?'var(--warn-text)':'var(--text3)'};border-color:${note?'var(--warn-border)':'var(--border)'};">${note?'Nota':'+nota'}</button>
-      </div>`;
-    if(isEditing){
-      html+=`<div style="padding:8px 10px;background:var(--bg2);border-bottom:0.5px solid var(--border);">
-        <textarea id="nt" style="width:100%;height:56px;resize:none;">${note}</textarea>
-        <div style="display:flex;gap:6px;margin-top:6px;">
-          <button class="btn" onclick="cancelNote()" style="flex:1;font-size:12px;">Cancelar</button>
-          <button class="btn btn-info" onclick="saveNote('${dkey}',document.getElementById('nt').value)" style="flex:1;font-size:12px;">Guardar</button>
-        </div></div>`;
-    } else if(note){
-      html+=`<div onclick="openNote('${dkey}')" style="padding:5px 12px;font-size:12px;color:var(--text2);border-bottom:0.5px solid var(--border);background:var(--bg2);cursor:pointer;">
-        <span style="font-weight:500;color:var(--warn-text);">Nota: </span>${note}</div>`;
-    }
-    html+=`<div style="display:flex;gap:6px;padding:8px;">`;
-    SLOTS.forEach(slot=>{
-      const vis=slotVisitors(dkey,slot.id), iAmGoing=state.myName&&vis.includes(state.myName);
-      const bg=iAmGoing?'var(--info-bg)':vis.length?'var(--success-bg)':'var(--bg2)';
-      const border=iAmGoing?'1.5px solid var(--info-border)':vis.length?'0.5px solid var(--success-border)':'0.5px solid var(--border)';
-      const lc=iAmGoing?'var(--info-text)':vis.length?'var(--success-text)':'var(--text2)';
-      const names=vis.map(pillHTML).join('');
-      html+=`<button class="slot-btn" onclick="toggleVisit('${dkey}','${slot.id}')" style="background:${bg};border:${border};">
-        <div style="font-weight:500;color:${lc};">${slot.label}</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:1px;">${slot.time}</div>
-        ${names?`<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-top:5px;gap:1px;">${names}</div>`:''}
-      </button>`;
-    });
-    html+=`</div>`;
-    // Call toggle row
-    const callVis=callVisitors(dkey), iAmCalling=state.myName&&callVis.includes(state.myName);
-    const callNames=callVis.map(pillHTML).join('');
-    html+=`<div style="padding:0 8px 8px;">
-      <button onclick="toggleVisit('${dkey}','call')" style="width:100%;border-radius:var(--radius);padding:8px 12px;font-family:inherit;font-size:12px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;border:${iAmCalling?'1.5px solid var(--info-border)':'0.5px solid var(--border)'};background:${iAmCalling?'var(--info-bg)':'var(--bg2)'};">
-        <span style="font-size:14px;">📞</span>
-        <span style="font-weight:500;color:${iAmCalling?'var(--info-text)':'var(--text2)'};">Llamada telefónica</span>
-        ${callNames?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-left:4px;">${callNames}</div>`:''}
-        ${iAmCalling?`<span style="margin-left:auto;font-size:10px;font-weight:500;color:var(--info-text);">✓ apuntado</span>`:`<span style="margin-left:auto;font-size:10px;color:var(--text3);">Toca para apuntarte</span>`}
-      </button>
-    </div></div>`;
-  });
-  return html;
-}
-
-// ── RENDER MONTH ───────────────────────────────────────────────────
-function renderMonth() {
-  const {y,m}=state.monthRef, today=todayStr();
-  const totalDays=new Date(y,m+1,0).getDate();
-  const firstDow=new Date(y,m,1).getDay();
-  const offset=firstDow===0?6:firstDow-1;
-  let acc=0;
-  for(let d=1;d<=totalDays;d++){
-    const dk=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    if(dayVisitors(dk).length>0)acc++;
-  }
-  let html=`<div style="font-size:12px;margin-bottom:10px;">
-    <span style="color:var(--success-text);font-weight:500;">${acc}</span> días acompañada &middot; <span style="color:${totalDays-acc>10?'var(--danger-text)':'var(--warn-text)'};font-weight:500;">${totalDays-acc}</span> sola
-  </div>`;
-  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-    <button class="btn-nav" onclick="changeMonth(-1)">‹</button>
-    <div style="text-align:center;"><div style="font-size:14px;font-weight:500;">${MONTHS[m]} ${y}</div>
-    <button onclick="state.monthRef={y:new Date().getFullYear(),m:new Date().getMonth()};render()" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--info-text);font-family:inherit;">Este mes</button></div>
-    <button class="btn-nav" onclick="changeMonth(1)">›</button>
-  </div>`;
-  html+=`<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:4px;">`;
-  DAYS_S.forEach(d=>{html+=`<div style="text-align:center;font-size:11px;font-weight:500;color:var(--text3);padding:3px 0;">${d}</div>`;});
-  html+=`</div><div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;">`;
-  for(let i=0;i<offset;i++)html+=`<div class="mcell faded"></div>`;
-  for(let d=1;d<=totalDays;d++){
-    const dk=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const vis=dayVisitors(dk), iAmGoing=state.myName&&vis.includes(state.myName), isT=dk===today, note=state.notes[dk];
-    const bg=iAmGoing?'var(--info-bg)':vis.length?'var(--success-bg)':'transparent';
-    const nc=iAmGoing?'var(--info-text)':vis.length?'var(--success-text)':isT?'var(--info-text)':'var(--text)';
-    const shown=vis.slice(0,2);
-    html+=`<div class="mcell${isT?' today':''}" style="background:${bg};" onclick="state.weekStart=mondayOf(new Date('${dk}T12:00:00'));state.view='week';render();">
-      <div style="font-size:12px;font-weight:${isT?'600':'400'};color:${nc};margin-bottom:2px;">${d}</div>
-      ${shown.map(n=>{const c=cousinColor(n);return `<div style="font-size:9px;font-weight:500;padding:1px 4px;border-radius:10px;background:${c.bg};color:${c.text};margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n}</div>`;}).join('')}
-      ${vis.length>2?`<div style="font-size:9px;color:var(--text3);">+${vis.length-2} más</div>`:''}
-      ${note?`<span class="dot" style="background:var(--warn-text);margin-top:2px;width:5px;height:5px;"></span>`:''}
-    </div>`;
-  }
-  html+=`</div><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px;">Toca un día para ir a esa semana</p>`;
-  return html;
-}
-
-// ── RENDER DASHBOARD ───────────────────────────────────────────────
-function renderDash() {
-  const subTabs=`<div style="display:flex;gap:4px;padding:4px;background:var(--bg2);border-radius:var(--radius);margin-bottom:14px;">
-    <button class="tab ${state.dashSub==='general'?'active':''}" onclick="state.dashSub='general';render()" style="flex:1;">General</button>
-    <button class="tab ${state.dashSub==='cousin'?'active':''}" onclick="state.dashSub='cousin';render()" style="flex:1;">Por primo</button>
-  </div>`;
-
-  if (!state.visits.length) return subTabs+`<div style="text-align:center;padding:40px 20px;color:var(--text3);font-size:14px;">Aún no hay visitas registradas.</div>`;
-
-  if(state.dashSub==='cousin') return subTabs+renderDashCousin();
-  return subTabs+renderDashGeneral();
-}
-
-function renderDashGeneral() {
-  if (!state.visits.length) return '';
-
-  // ── helpers ──
-  const visitsByName={};
-  state.visits.forEach(v=>{visitsByName[v.cousin_name]=(visitsByName[v.cousin_name]||0)+1;});
-  const sorted=Object.entries(visitsByName).sort((a,b)=>b[1]-a[1]);
-  const maxVisits=sorted.length?sorted[0][1]:1;
-
-  const slotByName={};
-  state.visits.forEach(v=>{
-    if(!slotByName[v.cousin_name])slotByName[v.cousin_name]={morning:0,afternoon:0,evening:0};
-    slotByName[v.cousin_name][v.slot]++;
-  });
-  function favSlot(name){
-    const s=slotByName[name]||{}; const e=Object.entries(s); if(!e.length)return '-';
-    return {morning:'Mañanas',afternoon:'Tardes',evening:'Noches'}[e.sort((a,b)=>b[1]-a[1])[0][0]]||'-';
-  }
-
-  // consecutive weeks streak
-  function weekStreak(name){
-    const weeks=[...new Set(state.visits.filter(v=>v.cousin_name===name).map(v=>localDs(mondayOf(new Date(v.date+'T12:00:00')))))].sort();
-    if(!weeks.length)return 0;
-    let cur=1,max=1;
-    for(let i=1;i<weeks.length;i++){
-      const diff=(new Date(weeks[i]+'T12:00:00')-new Date(weeks[i-1]+'T12:00:00'))/(1000*60*60*24*7);
-      if(Math.round(diff)===1){cur++;max=Math.max(max,cur);}else cur=1;
-    }
-    return max;
-  }
-
-  // visits this week
-  const cwm=currentMondayStr();
-  const cwDates=weekDates(mondayOf(new Date())).map(d=>localDs(d));
-  function visitsThisWeek(name){return state.visits.filter(v=>v.cousin_name===name&&cwDates.includes(v.date)).length;}
-
-  // visits last 4 weeks heatmap per cousin
-  function last4Weeks(name){
-    const weeks=[];
-    for(let w=3;w>=0;w--){
-      const mon=mondayOf(new Date()); mon.setDate(mon.getDate()-w*7);
-      const dates=weekDates(mon).map(d=>localDs(d));
-      const count=state.visits.filter(v=>v.cousin_name===name&&dates.includes(v.date)).length;
-      weeks.push(count);
-    }
-    return weeks;
-  }
-
-  const onlyVisits = state.visits.filter(v=>v.slot!==CALL_SLOT);
-  const onlyCalls  = state.visits.filter(v=>v.slot===CALL_SLOT);
-  const uniqueDays = new Set(onlyVisits.map(v=>v.date)).size;
-  const uniqueCallDays = new Set(onlyCalls.map(v=>v.date)).size;
-  const uniqueCoveredDays = new Set(state.visits.map(v=>v.date)).size;
-  const totalVisitsAll = onlyVisits.length;
-  const totalCallsAll  = onlyCalls.length;
-  const noVisit=state.cousins.filter(c=>!visitsByName[c.name]);
-  const neverContacted=state.cousins.filter(c=>!visitsByName[c.name]&&!state.visits.find(v=>v.cousin_name===c.name&&v.slot===CALL_SLOT));
-
-  // ── this week highlight ──
-  const thisWeekVisitors=[...new Set(state.visits.filter(v=>cwDates.includes(v.date)&&v.slot!==CALL_SLOT).map(v=>v.cousin_name))];
-  const thisWeekCallers=[...new Set(state.visits.filter(v=>cwDates.includes(v.date)&&v.slot===CALL_SLOT).map(v=>v.cousin_name))];
-  const thisWeekActive=[...new Set([...thisWeekVisitors,...thisWeekCallers])];
-  const thisWeekMissing=state.cousins.filter(c=>!thisWeekActive.includes(c.name));
-
-  let html='';
-
-  // Top stats — 2 rows
-  html+=`<div style="display:flex;gap:8px;margin-bottom:8px;">
-    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Días acompañada</div><div style="font-size:22px;font-weight:500;color:var(--success-text);">${uniqueCoveredDays}</div></div>
-    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Visitas 🏠</div><div style="font-size:22px;font-weight:500;">${totalVisitsAll}</div></div>
-    <div class="stat-card"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Llamadas 📞</div><div style="font-size:22px;font-weight:500;color:var(--warn-text);">${totalCallsAll}</div></div>
-  </div>`;
-
-  // Esta semana quién falta
-  if(thisWeekMissing.length){
-    html+=`<div class="card" style="padding:12px 14px;margin-bottom:8px;background:var(--warn-bg);border-color:var(--warn-border);">
-      <div style="font-size:12px;font-weight:500;color:var(--warn-text);margin-bottom:8px;">Esta semana aún no han ido 👀</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px;">
-        ${thisWeekMissing.map(c=>{const col=COLORS[c.color_index%COLORS.length];return `<span class="pill" style="background:${col.bg};color:${col.text};">${c.name}</span>`;}).join('')}
-      </div>
-    </div>`;
-  } else if(thisWeekVisitors.length){
-    html+=`<div class="card" style="padding:12px 14px;margin-bottom:8px;background:var(--success-bg);border-color:var(--success-border);">
-      <div style="font-size:12px;font-weight:500;color:var(--success-text);">Todos han ido esta semana 🎉</div>
-    </div>`;
-  }
-
-  // Ranking con heatmap 4 semanas
-  html+=`<div class="card" style="padding:14px;margin-bottom:8px;">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
-      <div style="font-size:13px;font-weight:500;">Ranking de visitas</div>
-      <div style="font-size:10px;color:var(--text3);">Últimas 4 semanas →</div>
-    </div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Cada cuadrado = una semana</div>`;
-
-  sorted.forEach(([name,count],i)=>{
-    const c=cousinColor(name);
-    const pct=Math.round((count/maxVisits)*100);
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    const streak=weekStreak(name);
-    const weeks=last4Weeks(name);
-    const thisW=visitsThisWeek(name);
-    const heatSquares=weeks.map(w=>{
-      const bg=w===0?'var(--bg3)':w<=1?'var(--success-bg)':w<=2?'var(--success-border)':'var(--success-text)';
-      return `<div style="width:14px;height:14px;border-radius:3px;background:${bg};display:inline-block;"></div>`;
-    }).join('');
-
-    html+=`<div style="margin-bottom:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          ${medal?`<span style="font-size:13px;">${medal}</span>`:`<span style="font-size:11px;color:var(--text3);min-width:16px;">${i+1}</span>`}
-          <span class="dot" style="background:${c.dot};"></span>
-          <span style="font-size:13px;font-weight:${i<3?'500':'400'};">${name}</span>
-          ${thisW>0?`<span style="font-size:10px;padding:1px 5px;border-radius:10px;background:var(--info-bg);color:var(--info-text);">esta semana ✓</span>`:''}
-          ${(()=>{const calls=state.visits.filter(v=>v.cousin_name===name&&v.slot===CALL_SLOT).length;return calls>0?`<span style="font-size:10px;padding:1px 5px;border-radius:10px;background:var(--warn-bg);color:var(--warn-text);">📞${calls}</span>`:'';})()}
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="display:flex;gap:3px;align-items:center;">${heatSquares}</div>
-          <span style="font-size:13px;font-weight:500;color:${c.text};background:${c.bg};padding:2px 8px;border-radius:20px;min-width:28px;text-align:center;">${count}</span>
-        </div>
-      </div>
-      <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${c.dot};"></div></div>
-      <div style="display:flex;gap:12px;margin-top:4px;">
-        <span style="font-size:10px;color:var(--text3);">${favSlot(name)}</span>
-        ${streak>1?`<span style="font-size:10px;color:var(--success-text);">🔥 ${streak} semanas seguidas</span>`:''}
-      </div>
-    </div>`;
-  });
-  html+=`</div>`;
-
-  // Primos que nunca han visitado (but may have called)
-  if(noVisit.length){
-    html+=`<div class="card" style="padding:14px;margin-bottom:8px;background:${neverContacted.length?'var(--danger-bg)':'var(--warn-bg)'};border-color:${neverContacted.length?'var(--danger-border)':'var(--warn-border)'};">
-      <div style="font-size:13px;font-weight:500;color:${neverContacted.length?'var(--danger-text)':'var(--warn-text)'};margin-bottom:6px;">${neverContacted.length?'Nunca han contactado con Amama 😢':'Nunca han ido en persona 🙁'}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px;">
-        ${(neverContacted.length?neverContacted:noVisit).map(c=>{const col=COLORS[c.color_index%COLORS.length];return `<span class="pill" style="background:${col.bg};color:${col.text};">${c.name}</span>`;}).join('')}
-      </div>
-    </div>`;
-  }
-
-  // Slot + call distribution
-  const slotTotals={morning:0,afternoon:0,evening:0,call:0};
-  state.visits.forEach(v=>{slotTotals[v.slot]=(slotTotals[v.slot]||0)+1;});
-  const totalSlot=Object.values(slotTotals).reduce((a,b)=>a+b,0)||1;
-  html+=`<div class="card" style="padding:14px;margin-bottom:8px;">
-    <div style="font-size:13px;font-weight:500;margin-bottom:12px;">¿Cuándo suelen contactar?</div>
-    <div style="display:flex;gap:6px;">`;
-  [{id:'morning',label:'Mañana',emoji:'☀️'},{id:'afternoon',label:'Tarde',emoji:'🌤️'},{id:'evening',label:'Noche',emoji:'🌙'},{id:'call',label:'Llamada',emoji:'📞'}].forEach(s=>{
-    const n=slotTotals[s.id]||0; const pct=Math.round((n/totalSlot)*100);
-    const isCall=s.id==='call';
-    html+=`<div style="flex:1;text-align:center;background:${isCall&&n>0?'var(--warn-bg)':'var(--bg2)'};border-radius:var(--radius);padding:10px 4px;">
-      <div style="font-size:16px;margin-bottom:3px;">${s.emoji}</div>
-      <div style="font-size:18px;font-weight:600;color:${isCall&&n>0?'var(--warn-text)':'var(--text)'};">${pct}%</div>
-      <div style="font-size:11px;font-weight:500;margin:2px 0;">${s.label}</div>
-      <div style="font-size:10px;color:var(--text3);">${n}x</div>
-    </div>`;
-  });
-  html+=`</div></div>`;
-
-  // Weekly trend: visits per week last 8 weeks
-  const weekTrend=[];
-  for(let w=7;w>=0;w--){
-    const mon=mondayOf(new Date()); mon.setDate(mon.getDate()-w*7);
-    const dates=weekDates(mon).map(d=>localDs(d));
-    const count=state.visits.filter(v=>dates.includes(v.date)).length;
-    const label=w===0?'Esta':w===1?'Ant.':fmt(mon).replace(/\s/g,'\u00a0');
-    weekTrend.push({label,count});
-  }
-  const maxTrend=Math.max(...weekTrend.map(w=>w.count),1);
-  html+=`<div class="card" style="padding:14px;">
-    <div style="font-size:13px;font-weight:500;margin-bottom:14px;">Visitas por semana (últimas 8)</div>
-    <div style="display:flex;align-items:flex-end;gap:5px;height:70px;">`;
-  weekTrend.forEach(w=>{
-    const h=Math.max(4,Math.round((w.count/maxTrend)*66));
-    const isThis=w.label==='Esta';
-    html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
-      <div style="font-size:9px;color:${isThis?'var(--info-text)':'var(--text3)'};">${w.count||''}</div>
-      <div style="width:100%;height:${h}px;background:${isThis?'var(--info-border)':'var(--success-border)'};border-radius:3px 3px 0 0;"></div>
-    </div>`;
-  });
-  html+=`</div><div style="display:flex;gap:5px;margin-top:4px;">`;
-  weekTrend.forEach(w=>{
-    const isThis=w.label==='Esta';
-    html+=`<div style="flex:1;text-align:center;font-size:9px;color:${isThis?'var(--info-text)':'var(--text3)'};">${w.label}</div>`;
-  });
-  html+=`</div></div>`;
-
-  return html;
 }
 
 // ── DASHBOARD POR PRIMO ───────────────────────────────────────────
 function renderDashCousin() {
-  // Cousin selector
   const allNames = state.cousins.map(c=>c.name);
-
-  // Build 8-week table: rows = cousins, cols = weeks
   const NUM_WEEKS = 8;
   const weeks = [];
   for(let w=NUM_WEEKS-1;w>=0;w--){
@@ -1372,54 +696,35 @@ function renderDashCousin() {
     const dates=weekDates(mon).map(d=>localDs(d));
     weeks.push({label:w===0?'Esta':w===1?'Ant':fmt(mon).split(' ')[0], dates, offset:w});
   }
-
-  // per cousin per week: visits only (excluding calls)
-  function weekVisitCount(name,dates){
-    return state.visits.filter(v=>v.cousin_name===name&&v.slot!==CALL_SLOT&&dates.includes(v.date)).length;
-  }
-  // calls only
-  function weekCallCount(name,dates){
-    return state.visits.filter(v=>v.cousin_name===name&&v.slot===CALL_SLOT&&dates.includes(v.date)).length;
-  }
-  // combined (visits + calls)
-  function weekCount(name,dates){
-    return state.visits.filter(v=>v.cousin_name===name&&dates.includes(v.date)).length;
-  }
-
-  // streak current (consecutive weeks from now backwards, visits or calls)
+  function weekVisitCount(name,dates){ return state.visits.filter(v=>v.cousin_name===name&&v.slot!==CALL_SLOT&&dates.includes(v.date)).length; }
+  function weekCallCount(name,dates){ return state.visits.filter(v=>v.cousin_name===name&&v.slot===CALL_SLOT&&dates.includes(v.date)).length; }
+  function weekCount(name,dates){ return state.visits.filter(v=>v.cousin_name===name&&dates.includes(v.date)).length; }
   function currentStreak(name){
     let streak=0;
     for(let w=0;w<NUM_WEEKS;w++){
       const mon=mondayOf(new Date()); mon.setDate(mon.getDate()-w*7);
       const dates=weekDates(mon).map(d=>localDs(d));
-      if(weekCount(name,dates)>0) streak++;
-      else break;
+      if(weekCount(name,dates)>0) streak++; else break;
     }
     return streak;
   }
-
   const visitsByName={};
   state.visits.filter(v=>v.slot!==CALL_SLOT).forEach(v=>{visitsByName[v.cousin_name]=(visitsByName[v.cousin_name]||0)+1;});
   const callsByName={};
   state.visits.filter(v=>v.slot===CALL_SLOT).forEach(v=>{callsByName[v.cousin_name]=(callsByName[v.cousin_name]||0)+1;});
 
-  // If a cousin is selected, show detail
   if(state.dashCousin){
     const name=state.dashCousin;
     const c=cousinColor(name);
     const total=visitsByName[name]||0;
     const streak=currentStreak(name);
-    const slotCounts={morning:0,afternoon:0,evening:0};
-    state.visits.filter(v=>v.cousin_name===name).forEach(v=>slotCounts[v.slot]=(slotCounts[v.slot]||0)+1);
-    const favS=Object.entries(slotCounts).sort((a,b)=>b[1]-a[1]);
+    const slotCounts={morning:0,afternoon:0,evening:0,call:0};
+    state.visits.filter(v=>v.cousin_name===name).forEach(v=>{slotCounts[v.slot]=(slotCounts[v.slot]||0)+1;});
+    const favS=Object.entries({morning:slotCounts.morning,afternoon:slotCounts.afternoon,evening:slotCounts.evening}).sort((a,b)=>b[1]-a[1]);
     const favSlotLabel={morning:'Mañana ☀️',afternoon:'Tarde 🌤️',evening:'Noche 🌙'};
-
-    // Day of week preference
     const dowCounts=[0,0,0,0,0,0,0];
-    state.visits.filter(v=>v.cousin_name===name).forEach(v=>{
-      const dow=new Date(v.date+'T12:00:00').getDay();
-      const idx=dow===0?6:dow-1;
-      dowCounts[idx]++;
+    state.visits.filter(v=>v.cousin_name===name&&v.slot!==CALL_SLOT).forEach(v=>{
+      const dow=new Date(v.date+'T12:00:00').getDay(); dowCounts[dow===0?6:dow-1]++;
     });
     const maxDow=Math.max(...dowCounts,1);
 
@@ -1435,51 +740,40 @@ function renderDashCousin() {
         <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Llamadas</div><div style="font-size:20px;font-weight:500;color:var(--warn-text);">${callsByName[name]||0}<span style="font-size:14px;">📞</span></div></div>
         <div class="stat-card"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Racha actual</div><div style="font-size:20px;font-weight:500;">${streak}<span style="font-size:12px;color:var(--text3);"> sem</span></div></div>
       </div>
-
       <div style="font-size:12px;font-weight:500;margin-bottom:8px;">Últimas ${NUM_WEEKS} semanas</div>
       <div style="display:flex;align-items:flex-end;gap:4px;height:60px;margin-bottom:4px;">`;
     weeks.forEach(w=>{
-      const vc=weekVisitCount(name,w.dates);
-      const cc=weekCallCount(name,w.dates);
-      const total=vc+cc;
-      const maxH=56;
-      const hv=total>0?Math.max(4,Math.round((vc/(total||1))*Math.max(10,Math.round((total/4)*maxH)))):0;
-      const hc=total>0?Math.max(cc>0?4:0,Math.round((cc/(total||1))*Math.max(10,Math.round((total/4)*maxH)))):0;
-      const hEmpty=total===0?4:0;
+      const vc=weekVisitCount(name,w.dates), cc=weekCallCount(name,w.dates), total=vc+cc;
+      const maxH=56, hTotal=total>0?Math.max(10,Math.round((total/4)*maxH)):0;
+      const hc=total>0?Math.round((cc/total)*hTotal):0, hv=hTotal-hc;
       const bgV=w.offset===0?'var(--info-border)':'var(--success-border)';
       html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;">
         <div style="font-size:9px;color:${total>0?'var(--success-text)':'var(--text3)'};">${total||''}</div>
-        ${hEmpty?`<div style="width:100%;height:${hEmpty}px;background:var(--bg3);border-radius:3px 3px 0 0;"></div>`:''}
-        ${hc>0?`<div style="width:100%;height:${hc}px;background:var(--warn-border);border-radius:${hv?'0':'3px 3px'} 0 0;"></div>`:''}
-        ${hv>0?`<div style="width:100%;height:${hv}px;background:${bgV};border-radius:3px 3px 0 0;"></div>`:''}
+        ${hc>0?`<div style="width:100%;height:${hc}px;background:var(--warn-border);border-radius:3px 3px 0 0;"></div>`:''}
+        ${hv>0?`<div style="width:100%;height:${hv}px;background:${bgV};border-radius:${hc?'0':'3px 3px'} 0 0;"></div>`:''}
+        ${hTotal===0?`<div style="width:100%;height:4px;background:var(--bg3);border-radius:3px 3px 0 0;"></div>`:''}
       </div>`;
     });
     html+=`</div><div style="display:flex;gap:4px;margin-bottom:16px;">`;
     weeks.forEach(w=>{html+=`<div style="flex:1;text-align:center;font-size:9px;color:${w.offset===0?'var(--info-text)':'var(--text3)'};">${w.label}</div>`;});
     html+=`</div>
-
       <div style="font-size:12px;font-weight:500;margin-bottom:8px;">¿Qué día de la semana suele ir?</div>
       <div style="display:flex;align-items:flex-end;gap:4px;height:40px;margin-bottom:4px;">`;
-    DAYS_S.forEach((d,i)=>{
+    DAYS_S.forEach((_,i)=>{
       const cnt=dowCounts[i]; const h=cnt>0?Math.max(6,Math.round((cnt/maxDow)*36)):3;
-      html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
-        <div style="width:100%;height:${h}px;background:${cnt>0?c.dot:'var(--bg3)'};border-radius:3px 3px 0 0;"></div>
-      </div>`;
+      html+=`<div style="flex:1;"><div style="width:100%;height:${h}px;background:${cnt>0?c.dot:'var(--bg3)'};border-radius:3px 3px 0 0;"></div></div>`;
     });
     html+=`</div><div style="display:flex;gap:4px;">`;
     DAYS_S.forEach(d=>{html+=`<div style="flex:1;text-align:center;font-size:9px;color:var(--text3);">${d}</div>`;});
     html+=`</div></div>`;
 
-    // Franjas horaria breakdown
-    const totalActions = total + (callsByName[name]||0) || 1;
+    const totalActions=total+(callsByName[name]||0)||1;
     html+=`<div class="card" style="padding:14px;">
       <div style="font-size:12px;font-weight:500;margin-bottom:10px;">¿Cómo contacta?</div>
       <div style="display:flex;gap:6px;">`;
     [{id:'morning',label:'Mañana',emoji:'☀️'},{id:'afternoon',label:'Tarde',emoji:'🌤️'},{id:'evening',label:'Noche',emoji:'🌙'},{id:'call',label:'Llamada',emoji:'📞'}].forEach(s=>{
-      const n=s.id==='call'?(callsByName[name]||0):(slotCounts[s.id]||0);
-      const isCall=s.id==='call';
-      const bg=isCall&&n>0?'var(--warn-bg)':'var(--bg2)';
-      const tc=isCall&&n>0?'var(--warn-text)':c.text;
+      const n=slotCounts[s.id]||0; const isCall=s.id==='call';
+      const bg=isCall&&n>0?'var(--warn-bg)':'var(--bg2)'; const tc=isCall&&n>0?'var(--warn-text)':c.text;
       html+=`<div style="flex:1;text-align:center;background:${bg};border-radius:var(--radius);padding:10px 3px;">
         <div style="font-size:15px;">${s.emoji}</div>
         <div style="font-size:16px;font-weight:600;color:${tc};">${Math.round((n/totalActions)*100)}%</div>
@@ -1491,10 +785,7 @@ function renderDashCousin() {
     return html;
   }
 
-  // ── LIST VIEW: all cousins week-by-week ──
-  // Sort by total visits desc
   const sortedNames=[...allNames].sort((a,b)=>(visitsByName[b]||0)-(visitsByName[a]||0));
-
   let html=`<div class="card" style="padding:14px;margin-bottom:8px;overflow-x:auto;">
     <div style="font-size:13px;font-weight:500;margin-bottom:12px;">Visitas por primo — últimas ${NUM_WEEKS} semanas</div>
     <div style="min-width:340px;">
@@ -1502,19 +793,15 @@ function renderDashCousin() {
         <div style="font-size:10px;color:var(--text3);">Primo</div>`;
   weeks.forEach(w=>{html+=`<div style="font-size:9px;color:${w.offset===0?'var(--info-text)':'var(--text3)'};text-align:center;">${w.label}</div>`;});
   html+=`</div>`;
-
   sortedNames.forEach(name=>{
     const c=cousinColor(name);
-    const streak=currentStreak(name);
-    html+=`<div style="display:grid;grid-template-columns:90px repeat(${NUM_WEEKS},1fr);gap:3px;margin-bottom:4px;align-items:center;" onclick="state.dashCousin='${name}';render()" style="cursor:pointer;">
+    html+=`<div style="display:grid;grid-template-columns:90px repeat(${NUM_WEEKS},1fr);gap:3px;margin-bottom:4px;align-items:center;">
       <div style="display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="state.dashCousin='${name}';render()">
         <span class="dot" style="background:${c.dot};flex-shrink:0;"></span>
         <span style="font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${c.text};">${name}</span>
       </div>`;
     weeks.forEach(w=>{
-      const vc=weekVisitCount(name,w.dates);
-      const cc=weekCallCount(name,w.dates);
-      const cnt=vc+cc;
+      const vc=weekVisitCount(name,w.dates), cc=weekCallCount(name,w.dates), cnt=vc+cc;
       const bg=cnt===0?'var(--bg3)':vc>0?(vc===1?'var(--success-bg)':vc<=2?'var(--success-border)':'var(--success-text)'):'var(--warn-bg)';
       const tc=cnt===0?'var(--text3)':vc>=3?'white':vc>0?'var(--success-text)':'var(--warn-text)';
       const label=vc>0?(cc>0?vc+'+📞':String(vc)):cc>0?'📞':'';
@@ -1522,16 +809,13 @@ function renderDashCousin() {
     });
     html+=`</div>`;
   });
-  html+=`</div>
-    <p style="font-size:10px;color:var(--text3);margin-top:8px;">Toca un nombre para ver el detalle del primo</p>
-  </div>`;
+  html+=`</div><p style="font-size:10px;color:var(--text3);margin-top:8px;">Toca un nombre para ver el detalle</p></div>`;
 
-  // Weekly participation % chart
   html+=`<div class="card" style="padding:14px;">
-    <div style="font-size:13px;font-weight:500;margin-bottom:12px;">% de primos que fueron cada semana</div>
+    <div style="font-size:13px;font-weight:500;margin-bottom:12px;">% de primos que contactaron cada semana</div>
     <div style="display:flex;align-items:flex-end;gap:5px;height:70px;">`;
   weeks.forEach(w=>{
-    const active=allNames.filter(n=>weekCount(n,w.dates)>0).length; // weekCount already includes calls
+    const active=allNames.filter(n=>weekCount(n,w.dates)>0).length;
     const pct=allNames.length?Math.round((active/allNames.length)*100):0;
     const h=Math.max(4,Math.round((pct/100)*66));
     const bg=pct>=80?'var(--success-text)':pct>=50?'var(--success-border)':w.offset===0?'var(--info-border)':'var(--warn-border)';
@@ -1543,7 +827,6 @@ function renderDashCousin() {
   html+=`</div><div style="display:flex;gap:5px;margin-top:4px;">`;
   weeks.forEach(w=>{html+=`<div style="flex:1;text-align:center;font-size:9px;color:${w.offset===0?'var(--info-text)':'var(--text3)'};">${w.label}</div>`;});
   html+=`</div></div>`;
-
   return html;
 }
 
@@ -1576,8 +859,8 @@ function render() {
   const root=document.getElementById('root');
   if(!state.myName){root.innerHTML=renderNameScreen();return;}
   let body='';
-  if(state.view==='week')body=renderWeek();
-  else if(state.view==='month')body=renderMonth();
+  if(state.view==='week') body=renderWeek();
+  else if(state.view==='month') body=renderMonth();
   else body=renderDash();
   root.innerHTML=renderHeader()+renderTabs()+body+renderLegend();
 }
@@ -1587,45 +870,27 @@ async function init() {
   try { await loadAll(); render(); }
   catch(e) { console.error(e); document.getElementById('root').innerHTML=`<div style="padding:32px;text-align:center;color:var(--danger-text);">Error conectando. Revisa la consola.</div>`; }
 }
-init();
 
-// ── NOTIFICATIONS ─────────────────────────────────────────────────
+// ── NOTIFICATIONS ──────────────────────────────────────────────────
 async function requestNotifications() {
   if (!('Notification' in window)) { alert('Tu navegador no soporta notificaciones.'); return; }
   const perm = await Notification.requestPermission();
   if (perm === 'granted') {
     localStorage.setItem('notif_enabled', '1');
     scheduleVisitReminders();
-    new Notification('Visitas a Amama', { body: '¡Notificaciones activadas! Te avisaremos el día antes de tus visitas.', icon: 'icon-192.png' });
+    new Notification('Visitas a Amama', { body: '¡Notificaciones activadas!', icon: 'icon-192.png' });
     render();
   }
 }
-
-function notifEnabled() {
-  return Notification.permission === 'granted' && localStorage.getItem('notif_enabled') === '1';
-}
-
-function disableNotifications() {
-  localStorage.removeItem('notif_enabled');
-  render();
-}
-
-function isInstalledPWA() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-}
-
-function isMobile() {
-  return /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-}
-
-function isIOS() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent);
-}
+function notifEnabled() { return Notification.permission === 'granted' && localStorage.getItem('notif_enabled') === '1'; }
+function disableNotifications() { localStorage.removeItem('notif_enabled'); render(); }
+function isInstalledPWA() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+function isMobile() { return /android|iphone|ipad|ipod/i.test(navigator.userAgent); }
+function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
 
 function handleNotifBtn() {
   if (notifEnabled()) { whatsappReminder(); return; }
   if (isInstalledPWA()) { requestNotifications(); return; }
-  // Not installed — show install guide modal
   showInstallGuide();
 }
 
@@ -1635,110 +900,60 @@ function showInstallGuide() {
   const ios = isIOS();
   const modal = document.createElement('div');
   modal.id = 'install-guide-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;padding:0;';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;';
   modal.innerHTML = `
     <div style="background:var(--bg);border-radius:16px 16px 0 0;padding:24px 20px 32px;width:100%;max-width:520px;border-top:0.5px solid var(--border2);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div style="font-size:15px;font-weight:500;">Para activar notificaciones</div>
         <button onclick="document.getElementById('install-guide-modal').remove()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text3);">×</button>
       </div>
-      <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;">Las notificaciones solo funcionan cuando la app está instalada en tu pantalla de inicio. Es gratis y solo tarda 10 segundos.</p>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;">Las notificaciones solo funcionan cuando la app está instalada en tu pantalla de inicio.</p>
       ${ios ? `
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">1</div>
-          <div style="font-size:13px;">Toca el botón <strong>Compartir</strong> ⬆️ de Safari (abajo en el centro)</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">2</div>
-          <div style="font-size:13px;">Desplázate y toca <strong>"Añadir a pantalla de inicio"</strong> 🏠</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">3</div>
-          <div style="font-size:13px;">Toca <strong>"Añadir"</strong> arriba a la derecha</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--success-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">4</div>
-          <div style="font-size:13px;">Abre la app desde el icono nuevo y activa las notificaciones 🔔</div>
-        </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg2);border-radius:var(--radius-lg);"><div style="width:28px;height:28px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;">1</div><div style="font-size:13px;">Toca el botón <strong>Compartir</strong> ⬆️ de Safari</div></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg2);border-radius:var(--radius-lg);"><div style="width:28px;height:28px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;">2</div><div style="font-size:13px;">Toca <strong>"Añadir a pantalla de inicio"</strong> 🏠</div></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg2);border-radius:var(--radius-lg);"><div style="width:28px;height:28px;border-radius:50%;background:var(--success-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;">3</div><div style="font-size:13px;">Abre la app desde el icono nuevo y activa 🔔</div></div>
       </div>` : `
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">1</div>
-          <div style="font-size:13px;">Toca el botón <strong>"Instalar"</strong> que aparece abajo en Chrome</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">2</div>
-          <div style="font-size:13px;">O toca los 3 puntos ⋮ → <strong>"Añadir a pantalla de inicio"</strong></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--success-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">3</div>
-          <div style="font-size:13px;">Abre la app desde el icono nuevo y activa las notificaciones 🔔</div>
-        </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg2);border-radius:var(--radius-lg);"><div style="width:28px;height:28px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;">1</div><div style="font-size:13px;">Toca <strong>"Instalar"</strong> en el banner de Chrome, o los 3 puntos ⋮ → "Añadir a pantalla de inicio"</div></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg2);border-radius:var(--radius-lg);"><div style="width:28px;height:28px;border-radius:50%;background:var(--success-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;">2</div><div style="font-size:13px;">Abre la app instalada y activa 🔔</div></div>
       </div>`}
       <button onclick="document.getElementById('install-guide-modal').remove()" style="width:100%;margin-top:20px;padding:12px;background:var(--info-bg);border:1px solid var(--info-border);border-radius:var(--radius-lg);color:var(--info-text);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">Entendido</button>
     </div>`;
   document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
 }
 
 function scheduleVisitReminders() {
   if (!notifEnabled() || !state.myName) return;
   const dates = weekDates(state.weekStart);
-
-  // TEST MODE: notify every minute for each visit this week
-  const TEST_MODE = false;
-
   dates.forEach(d => {
     const dk = localDs(d);
-    const allSlots = [...SLOTS.map(s=>s.id), 'call'];
-    const iAmGoing = allSlots.some(sid => {
-      const v = slotVisitors(dk, sid);
-      return v.includes(state.myName);
-    }) || callVisitors(dk).includes(state.myName);
-    if (!iAmGoing) return;
-
+    const mySlots = [...SLOTS.filter(s=>slotVisitors(dk,s.id).includes(state.myName)).map(s=>s.id),
+                     ...(callVisitors(dk).includes(state.myName)?[CALL_SLOT]:[])];
+    if (!mySlots.length) return;
     const dayName = DAYS[dates.indexOf(d)];
     const slotLabels = SLOTS.filter(s=>slotVisitors(dk,s.id).includes(state.myName)).map(s=>s.label);
     const hasCall = callVisitors(dk).includes(state.myName);
-    const what = [...slotLabels, ...(hasCall?['Llamada']:[])].join(' y ') || 'visita';
-
-    // 3 notifications per visit:
-    // 1) 9am the day before — "Mañana tienes visita"
-    // 2) 1 hour before the slot — "En 1 hora tienes visita"
-    // 3) Exact slot time — "¡Ahora toca visitar a Amama!"
-
-    const slotTimes = { morning: '10:00', afternoon: '16:00', evening: '20:00', call: '10:00' };
-    const mySlots = [...SLOTS.filter(s=>slotVisitors(dk,s.id).includes(state.myName)).map(s=>s.id),
-                     ...(callVisitors(dk).includes(state.myName)?['call']:[])];
+    const what = [...slotLabels,...(hasCall?['Llamada']:[])].join(' y ') || 'visita';
+    const slotTimes = {morning:'10:00',afternoon:'16:00',evening:'20:00',call:'10:00'};
     const firstSlot = mySlots[0] || 'morning';
-    const [slotH, slotM] = slotTimes[firstSlot].split(':').map(Number);
-
-    const visitDateTime = new Date(dk+'T'+slotTimes[firstSlot]+':00');
-    const dayBefore9am   = new Date(dk+'T09:00:00'); dayBefore9am.setDate(dayBefore9am.getDate()-1);
-    const oneHourBefore  = new Date(visitDateTime.getTime() - 60*60*1000);
-    const now = new Date();
-
     const slotTimeStr = slotTimes[firstSlot];
+    const visitDateTime = new Date(dk+'T'+slotTimeStr+':00');
+    const dayBefore9am = new Date(dk+'T09:00:00'); dayBefore9am.setDate(dayBefore9am.getDate()-1);
     const sameDay9am = new Date(dk+'T09:00:00');
-
+    const oneHourBefore = new Date(visitDateTime.getTime()-60*60*1000);
+    const now = new Date();
     const schedule = [
-      // Day before 9am: what's tomorrow
-      { time: dayBefore9am,  title: 'Visitas a Amama 📅', body: `Mañana (${dayName}) tienes ${what} con Amama a las ${slotTimeStr}h` },
-      // Same day 9am: reminder of today's visit
-      { time: sameDay9am,    title: 'Visitas a Amama ☀️', body: `Hoy tienes ${what} con Amama a las ${slotTimeStr}h` },
-      // Same day 1h before
-      { time: oneHourBefore, title: 'Visitas a Amama ⏰', body: `En 1 hora tienes ${what} con Amama (${slotTimeStr}h)` },
-      // Exact slot time
-      { time: visitDateTime, title: 'Visitas a Amama 🏠', body: `¡Ahora toca! Tienes ${what} con Amama` },
+      {time:dayBefore9am,  title:'Visitas a Amama 📅', body:`Mañana (${dayName}) tienes ${what} con Amama a las ${slotTimeStr}h`},
+      {time:sameDay9am,    title:'Visitas a Amama ☀️', body:`Hoy tienes ${what} con Amama a las ${slotTimeStr}h`},
+      {time:oneHourBefore, title:'Visitas a Amama ⏰', body:`En 1 hora tienes ${what} con Amama (${slotTimeStr}h)`},
+      {time:visitDateTime, title:'Visitas a Amama 🏠', body:`¡Ahora toca! Tienes ${what} con Amama`},
     ];
-
-    schedule.forEach(({ time, title, body }) => {
-      const delay = time - now;
-      if (delay > 0 && delay < 8*24*60*60*1000) {
-        setTimeout(() => {
-          if (notifEnabled()) new Notification(title, { body, icon: 'icon-192.png' });
-        }, delay);
+    schedule.forEach(({time,title,body})=>{
+      const delay=time-now;
+      if(delay>0&&delay<8*24*60*60*1000){
+        setTimeout(()=>{ if(notifEnabled()) new Notification(title,{body,icon:'icon-192.png'}); },delay);
       }
     });
   });
@@ -1748,99 +963,55 @@ function whatsappReminder() {
   if (!state.myName) return;
   const dates = weekDates(state.weekStart);
   const myVisits = [];
-  dates.forEach(d => {
-    const dk = localDs(d), di = dates.indexOf(d);
-    const slots = SLOTS.filter(s=>slotVisitors(dk,s.id).includes(state.myName)).map(s=>s.label);
-    const hasCalls = callVisitors(dk).includes(state.myName);
-    if (slots.length) myVisits.push(`${DAYS[di]} (${slots.join(' y ')})`);
-    if (hasCalls) myVisits.push(`${DAYS[di]} (llamada)`);
+  dates.forEach(d=>{
+    const dk=localDs(d), di=dates.indexOf(d);
+    const slots=SLOTS.filter(s=>slotVisitors(dk,s.id).includes(state.myName)).map(s=>s.label);
+    const hasCalls=callVisitors(dk).includes(state.myName);
+    if(slots.length) myVisits.push(`${DAYS[di]} (${slots.join(' y ')})`);
+    if(hasCalls) myVisits.push(`${DAYS[di]} (llamada)`);
   });
-  if (!myVisits.length) { alert('No tienes visitas planificadas esta semana.'); return; }
-  const msg = `🏠 Recordatorio visitas a Amama:%0A${myVisits.map(v=>'• '+v).join('%0A')}%0A%0A¡A por ella! 🥰`;
-  window.open('https://wa.me/?text='+msg, '_blank');
+  if(!myVisits.length){alert('No tienes visitas planificadas esta semana.');return;}
+  const msg=`🏠 Recordatorio visitas a Amama:%0A${myVisits.map(v=>'• '+v).join('%0A')}%0A%0A¡A por ella! 🥰`;
+  window.open('https://wa.me/?text='+msg,'_blank');
 }
 
 // ── PWA INSTALL PROMPT ────────────────────────────────────────────
 let deferredPrompt = null;
-
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  // Show banner after 1.5s
-  setTimeout(() => showInstallBanner('android'), 1500);
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt=e;
+  setTimeout(()=>showInstallBanner('android'),1500);
 });
-
-window.addEventListener('appinstalled', () => {
-  hideInstallBanner();
-  localStorage.setItem('pwa_dismissed', '1');
-  deferredPrompt = null;
-});
+window.addEventListener('appinstalled',()=>{ hideInstallBanner(); localStorage.setItem('pwa_dismissed','1'); deferredPrompt=null; });
 
 function showInstallBanner(type) {
-  // Don't show if already installed (standalone mode)
-  if (window.matchMedia('(display-mode: standalone)').matches) return;
-  if (localStorage.getItem('pwa_dismissed')) return;
-
-  let banner = document.getElementById('install-banner');
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'install-banner';
-    banner.className = 'install-banner';
-    document.body.appendChild(banner);
-  }
-
-  if (type === 'ios') {
-    banner.innerHTML = `
-      <div style="font-size:28px;flex-shrink:0;">🏠</div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:500;margin-bottom:2px;">Instala la app en tu móvil</div>
-        <div style="font-size:11px;color:var(--text2);line-height:1.5;">Toca <strong>Compartir</strong> <span style="font-size:13px;">⬆️</span> y luego <strong>"Añadir a pantalla de inicio"</strong></div>
-      </div>
-      <button onclick="hideInstallBanner()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3);padding:4px;flex-shrink:0;">×</button>`;
+  if(isInstalledPWA()) return;
+  if(localStorage.getItem('pwa_dismissed')) return;
+  let banner=document.getElementById('install-banner');
+  if(!banner){ banner=document.createElement('div'); banner.id='install-banner'; banner.className='install-banner'; document.body.appendChild(banner); }
+  if(type==='ios'){
+    banner.innerHTML=`<div style="font-size:28px;flex-shrink:0;">🏠</div><div style="flex:1;"><div style="font-size:13px;font-weight:500;margin-bottom:2px;">Instala la app en tu móvil</div><div style="font-size:11px;color:var(--text2);line-height:1.5;">Toca <strong>Compartir</strong> ⬆️ → <strong>"Añadir a pantalla de inicio"</strong></div></div><button onclick="hideInstallBanner()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3);padding:4px;flex-shrink:0;">×</button>`;
   } else {
-    banner.innerHTML = `
-      <div style="font-size:28px;flex-shrink:0;">🏠</div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:500;margin-bottom:2px;">Instala la app en tu móvil</div>
-        <div style="font-size:11px;color:var(--text2);">Tenla siempre a mano en la pantalla de inicio</div>
-      </div>
-      <button onclick="installPWA()" style="background:var(--info-bg);border:1px solid var(--info-border);color:var(--info-text);border-radius:var(--radius);padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;flex-shrink:0;font-family:inherit;">Instalar</button>
-      <button onclick="hideInstallBanner()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3);padding:4px;flex-shrink:0;">×</button>`;
+    banner.innerHTML=`<div style="font-size:28px;flex-shrink:0;">🏠</div><div style="flex:1;"><div style="font-size:13px;font-weight:500;margin-bottom:2px;">Instala la app en tu móvil</div><div style="font-size:11px;color:var(--text2);">Tenla siempre a mano en la pantalla de inicio</div></div><button onclick="installPWA()" style="background:var(--info-bg);border:1px solid var(--info-border);color:var(--info-text);border-radius:var(--radius);padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;flex-shrink:0;font-family:inherit;">Instalar</button><button onclick="hideInstallBanner()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3);padding:4px;flex-shrink:0;">×</button>`;
   }
-
-  requestAnimationFrame(() => { banner.classList.add('show'); });
+  requestAnimationFrame(()=>{ banner.classList.add('show'); });
 }
+function hideInstallBanner() { const b=document.getElementById('install-banner'); if(b) b.classList.remove('show'); localStorage.setItem('pwa_dismissed','1'); }
+async function installPWA() { if(!deferredPrompt) return; deferredPrompt.prompt(); const {outcome}=await deferredPrompt.userChoice; hideInstallBanner(); deferredPrompt=null; }
 
-function hideInstallBanner() {
-  const banner = document.getElementById('install-banner');
-  if (banner) banner.classList.remove('show');
-  localStorage.setItem('pwa_dismissed', '1');
-}
+// Service worker
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 
-async function installPWA() {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  hideInstallBanner(); // marca como visto independientemente de si acepta o no
-  deferredPrompt = null;
-}
-
-// iOS detection (uses isIOS() function defined above)
+// iOS banner
 const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 if (isIOS() && !isInStandalone && !localStorage.getItem('pwa_dismissed')) {
   setTimeout(() => showInstallBanner('ios'), 1500);
 }
 
-// Service worker registration
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
-}
+init();
 </script>
 
 <!--
-═══════════════════════════════════════════════════════════════
- SQL SETUP — Ejecuta en Supabase > SQL Editor (solo la 1ª vez)
-═══════════════════════════════════════════════════════════════
+SQL SETUP — Ejecuta en Supabase > SQL Editor (solo la 1ª vez)
 
 create table cousins (
   id           uuid primary key default gen_random_uuid(),
@@ -1848,7 +1019,6 @@ create table cousins (
   color_index  int  not null default 0,
   created_at   timestamptz default now()
 );
-
 create table visits (
   id           uuid primary key default gen_random_uuid(),
   date         text not null,
@@ -1857,18 +1027,16 @@ create table visits (
   created_at   timestamptz default now(),
   unique(date, slot, cousin_name)
 );
-
 create table notes (
   date  text primary key,
   note  text not null
 );
-
 alter table cousins enable row level security;
 alter table visits  enable row level security;
 alter table notes   enable row level security;
-
 create policy "public read cousins"  on cousins for select using (true);
 create policy "public write cousins" on cousins for insert with check (true);
+create policy "public delete cousins" on cousins for delete using (true);
 create policy "public read visits"   on visits  for select using (true);
 create policy "public write visits"  on visits  for insert with check (true);
 create policy "public delete visits" on visits  for delete using (true);
@@ -1876,8 +1044,6 @@ create policy "public read notes"    on notes   for select using (true);
 create policy "public upsert notes"  on notes   for insert with check (true);
 create policy "public update notes"  on notes   for update using (true);
 create policy "public delete notes"  on notes   for delete using (true);
-
-═══════════════════════════════════════════════════════════════
 -->
 </body>
 </html>

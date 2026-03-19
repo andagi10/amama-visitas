@@ -10,7 +10,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Amama">
 <meta name="theme-color" content="#1a1a18">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -69,10 +68,15 @@ input:focus,textarea:focus { border-color:var(--info-border); box-shadow:0 0 0 2
 </head>
 <body>
 <div class="app" id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--text3);">Cargando…</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 const SUPABASE_URL  = 'https://stmwwseuoubmqpmpkunu.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0bXd3c2V1b3VibXFwbXBrdW51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NjcyMDgsImV4cCI6MjA4OTM0MzIwOH0.zBmhQi9-Cugd55SMInDoqzuZpyAhePzhpqHnGBD89lw';
 
+if (!window.supabase) {
+  document.getElementById('root').innerHTML = '<div style="padding:32px;text-align:center;color:#791f1f;">Error: no se pudo cargar la librería.<br>Comprueba tu conexión y recarga la página.</div>';
+  throw new Error('Supabase library not loaded');
+}
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const DAYS   = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
@@ -868,7 +872,15 @@ function render() {
 // ── INIT ───────────────────────────────────────────────────────────
 async function init() {
   try { await loadAll(); render(); }
-  catch(e) { console.error(e); document.getElementById('root').innerHTML=`<div style="padding:32px;text-align:center;color:var(--danger-text);">Error conectando. Revisa la consola.</div>`; }
+  catch(e) {
+    console.error('Init error:', e);
+    const msg = e && (e.message || e.toString()) || 'Error desconocido';
+    document.getElementById('root').innerHTML=`<div style="padding:32px;text-align:center;">
+      <div style="color:var(--danger-text);font-size:14px;margin-bottom:8px;">Error al conectar con la base de datos</div>
+      <div style="color:var(--text3);font-size:12px;font-family:monospace;background:var(--bg2);padding:12px;border-radius:8px;text-align:left;word-break:break-all;">${msg}</div>
+      <button onclick="location.reload()" style="margin-top:16px;padding:10px 20px;background:var(--info-bg);border:1px solid var(--info-border);color:var(--info-text);border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;">Reintentar</button>
+    </div>`;
+  }
 }
 
 // ── NOTIFICATIONS ──────────────────────────────────────────────────

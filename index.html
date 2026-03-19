@@ -169,15 +169,20 @@ async function toggleVisit(date, slot) {
   if (!state.myName) return;
   const existing = state.visits.find(v=>v.date===date&&v.slot===slot&&v.cousin_name===state.myName);
   if (existing) {
+    // Guard: if still a temp id (insert never confirmed), just remove locally
+    if (String(existing.id).startsWith('temp_')) {
+      state.visits = state.visits.filter(v=>v.id!==existing.id);
+      render(); return;
+    }
     // Optimistic: remove immediately
     state.visits = state.visits.filter(v=>v.id!==existing.id);
     render();
-    const {error} = await db.from('visits').delete().eq('id',existing.id);
+    const {error} = await db.from('visits').delete().eq('id', existing.id);
     if (error) {
-      console.error('Error borrando visita:', error);
+      console.error('Error borrando visita:', JSON.stringify(error));
       state.visits.push(existing); // rollback
       render();
-      alert('Error al borrar la visita. Comprueba la consola.');
+      alert('Error al borrar: ' + (error.message||error.details||JSON.stringify(error)));
     }
   } else {
     // Optimistic: add with temp id
@@ -274,11 +279,11 @@ function renderAmamaStatus() {
     // solo=0
     { emoji:'🥰', title:'¡Semana perfecta! Amama siempre acompañada', sub:'Todos los días cubiertos. ¡Sois los mejores primos!', bg:'var(--success-bg)', bc:'var(--success-border)', tc:'var(--success-text)' },
   ];
-  const lv = levels[Math.min(solo, 7)] || levels[7];
+  const lv = levels[7 - Math.min(solo, 7)] || levels[0];
 
   // Progress bar
   const pct = Math.round((covered/7)*100);
-  const lonelyNames = dates.filter(d=>!dayVisitors(localDs(d)).length&&!dayHasCall(localDs(d))).map((_,i)=>DAYS[i]).filter(Boolean);
+  const lonelyNames = dates.map((d,i)=>({d,i})).filter(({d})=>!dayVisitors(localDs(d)).length&&!dayHasCall(localDs(d))).map(({i})=>DAYS[i]);
 
   return `<div class="card" style="margin-bottom:8px;padding:14px 16px;background:${lv.bg};border-color:${lv.bc};">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
@@ -293,7 +298,7 @@ function renderAmamaStatus() {
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:4px;">
       <span style="font-size:10px;color:${lv.tc};opacity:0.8;">${covered}/7 días cubiertos</span>
-      ${covered<7?`<span style="font-size:10px;color:${lv.tc};opacity:0.8;">Faltan: ${dates.filter(d=>!dayVisitors(localDs(d)).length&&!dayHasCall(localDs(d))).map((_,i)=>DAYS_S[i]).join(' ')}</span>`:''}
+      ${covered<7?`<span style="font-size:10px;color:${lv.tc};opacity:0.8;">Faltan: ${dates.map((d,i)=>({d,i})).filter(({d})=>!dayVisitors(localDs(d)).length&&!dayHasCall(localDs(d))).map(({i})=>DAYS_S[i]).join(' ')}</span>`:''}
     </div>
   </div>`;
 }
@@ -327,7 +332,10 @@ function renderHeader() {
     <div><h1 style="font-size:17px;font-weight:600;margin:0;">Visitas a Amama</h1>
     <p style="font-size:11px;color:var(--text3);margin:2px 0 0;">Primos Agirrezabal</p></div>
     <div style="display:flex;align-items:center;gap:6px;">
-      ${('Notification' in window)?`<button onclick="notifEnabled()?whatsappReminder():requestNotifications()" title="${notifEnabled()?'Enviarme recordatorio por WhatsApp':'Activar notificaciones'}" style="background:${notifEnabled()?'var(--success-bg)':'var(--bg2)'};border:0.5px solid ${notifEnabled()?'var(--success-border)':'var(--border)'};border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:14px;">${notifEnabled()?'📲':'🔔'}</button>`:''}
+      ${'Notification' in window ? `<div style="display:flex;gap:4px;">
+        <button onclick="notifEnabled()?whatsappReminder():requestNotifications()" title="${notifEnabled()?'Recordatorio WhatsApp':'Activar notificaciones'}" style="background:${notifEnabled()?'var(--success-bg)':'var(--bg2)'};border:0.5px solid ${notifEnabled()?'var(--success-border)':'var(--border)'};border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:14px;">${notifEnabled()?'📲':'🔔'}</button>
+        ${notifEnabled()?`<button onclick="disableNotifications()" title="Desactivar notificaciones" style="background:var(--danger-bg);border:0.5px solid var(--danger-border);border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:12px;color:var(--danger-text);">✕</button>`:''}
+      </div>` : ''}
       ${myCol?`<button class="btn" onclick="changeName()" style="font-size:12px;display:flex;align-items:center;gap:5px;border:1.5px solid ${myCol.dot};color:${myCol.text};background:${myCol.bg};">
         <span class="dot" style="background:${myCol.dot};"></span>${state.myName}</button>`:''}
     </div>
@@ -902,12 +910,17 @@ function notifEnabled() {
   return Notification.permission === 'granted' && localStorage.getItem('notif_enabled') === '1';
 }
 
+function disableNotifications() {
+  localStorage.removeItem('notif_enabled');
+  render();
+}
+
 function scheduleVisitReminders() {
   if (!notifEnabled() || !state.myName) return;
   const dates = weekDates(state.weekStart);
 
   // TEST MODE: notify every minute for each visit this week
-  const TEST_MODE = true;
+  const TEST_MODE = false;
 
   dates.forEach(d => {
     const dk = localDs(d);
@@ -923,34 +936,40 @@ function scheduleVisitReminders() {
     const hasCall = callVisitors(dk).includes(state.myName);
     const what = [...slotLabels, ...(hasCall?['Llamada']:[])].join(' y ') || 'visita';
 
-    if (TEST_MODE) {
-      // Fire immediately + repeat every 60s
-      const fire = () => {
-        if (notifEnabled()) {
-          new Notification('Visitas a Amama 📅', {
-            body: `Tienes ${what} el ${dayName} con Amama`,
-            icon: 'icon-192.png'
-          });
-        }
-      };
-      fire();
-      setInterval(fire, 60000);
-    } else {
-      // Production: notify at 9am the day before
-      const visitDate = new Date(dk+'T09:00:00');
-      visitDate.setDate(visitDate.getDate()-1);
-      const delay = visitDate - new Date();
-      if (delay > 0 && delay < 7*24*60*60*1000) {
+    // 3 notifications per visit:
+    // 1) 9am the day before — "Mañana tienes visita"
+    // 2) 1 hour before the slot — "En 1 hora tienes visita"
+    // 3) Exact slot time — "¡Ahora toca visitar a Amama!"
+
+    const slotTimes = { morning: '10:00', afternoon: '16:00', evening: '20:00', call: '10:00' };
+    const mySlots = [...SLOTS.filter(s=>slotVisitors(dk,s.id).includes(state.myName)).map(s=>s.id),
+                     ...(callVisitors(dk).includes(state.myName)?['call']:[])];
+    const firstSlot = mySlots[0] || 'morning';
+    const [slotH, slotM] = slotTimes[firstSlot].split(':').map(Number);
+
+    const visitDateTime = new Date(dk+'T'+slotTimes[firstSlot]+':00');
+    const dayBefore9am   = new Date(dk+'T09:00:00'); dayBefore9am.setDate(dayBefore9am.getDate()-1);
+    const oneHourBefore  = new Date(visitDateTime.getTime() - 60*60*1000);
+    const now = new Date();
+
+    const sameDay9am = new Date(dk+'T09:00:00');
+    const slotTimeStr = slotTimes[firstSlot];
+
+    const schedule = [
+      { time: dayBefore9am,  title: 'Visitas a Amama 📅', body: `Mañana (${dayName}) tienes ${what} con Amama` },
+      { time: sameDay9am,    title: 'Visitas a Amama ☀️', body: `Hoy tienes ${what} con Amama a las ${slotTimeStr}h` },
+      { time: oneHourBefore, title: 'Visitas a Amama ⏰', body: `En 1 hora tienes ${what} con Amama (${slotTimeStr}h)` },
+      { time: visitDateTime, title: 'Visitas a Amama 🏠', body: `¡Ahora toca! Tienes ${what} con Amama` },
+    ];
+
+    schedule.forEach(({ time, title, body }) => {
+      const delay = time - now;
+      if (delay > 0 && delay < 8*24*60*60*1000) {
         setTimeout(() => {
-          if (notifEnabled()) {
-            new Notification('Visitas a Amama 📅', {
-              body: `¡Mañana tienes ${what} con Amama! (${dayName})`,
-              icon: 'icon-192.png'
-            });
-          }
+          if (notifEnabled()) new Notification(title, { body, icon: 'icon-192.png' });
         }, delay);
       }
-    }
+    });
   });
 }
 

@@ -332,10 +332,10 @@ function renderHeader() {
     <div><h1 style="font-size:17px;font-weight:600;margin:0;">Visitas a Amama</h1>
     <p style="font-size:11px;color:var(--text3);margin:2px 0 0;">Primos Agirrezabal</p></div>
     <div style="display:flex;align-items:center;gap:6px;">
-      ${'Notification' in window ? `<div style="display:flex;gap:4px;">
-        <button onclick="notifEnabled()?whatsappReminder():requestNotifications()" title="${notifEnabled()?'Recordatorio WhatsApp':'Activar notificaciones'}" style="background:${notifEnabled()?'var(--success-bg)':'var(--bg2)'};border:0.5px solid ${notifEnabled()?'var(--success-border)':'var(--border)'};border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:14px;">${notifEnabled()?'📲':'🔔'}</button>
+      <div style="display:flex;gap:4px;">
+        <button onclick="handleNotifBtn()" title="${notifEnabled()?'Recordatorio WhatsApp':isInstalledPWA()?'Activar notificaciones':'Instalar app para notificaciones'}" style="background:${notifEnabled()?'var(--success-bg)':isInstalledPWA()?'var(--bg2)':'var(--warn-bg)'};border:0.5px solid ${notifEnabled()?'var(--success-border)':isInstalledPWA()?'var(--border)':'var(--warn-border)'};border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:14px;">${notifEnabled()?'📲':isInstalledPWA()?'🔔':'📲'}</button>
         ${notifEnabled()?`<button onclick="disableNotifications()" title="Desactivar notificaciones" style="background:var(--danger-bg);border:0.5px solid var(--danger-border);border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:12px;color:var(--danger-text);">✕</button>`:''}
-      </div>` : ''}
+      </div>
       ${myCol?`<button class="btn" onclick="changeName()" style="font-size:12px;display:flex;align-items:center;gap:5px;border:1.5px solid ${myCol.dot};color:${myCol.text};background:${myCol.bg};">
         <span class="dot" style="background:${myCol.dot};"></span>${state.myName}</button>`:''}
     </div>
@@ -915,6 +915,78 @@ function disableNotifications() {
   render();
 }
 
+function isInstalledPWA() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function isMobile() {
+  return /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function handleNotifBtn() {
+  if (notifEnabled()) { whatsappReminder(); return; }
+  if (isInstalledPWA()) { requestNotifications(); return; }
+  // Not installed — show install guide modal
+  showInstallGuide();
+}
+
+function showInstallGuide() {
+  const existing = document.getElementById('install-guide-modal');
+  if (existing) { existing.remove(); return; }
+  const ios = isIOS();
+  const modal = document.createElement('div');
+  modal.id = 'install-guide-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;padding:0;';
+  modal.innerHTML = `
+    <div style="background:var(--bg);border-radius:16px 16px 0 0;padding:24px 20px 32px;width:100%;max-width:520px;border-top:0.5px solid var(--border2);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:500;">Para activar notificaciones</div>
+        <button onclick="document.getElementById('install-guide-modal').remove()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text3);">×</button>
+      </div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;">Las notificaciones solo funcionan cuando la app está instalada en tu pantalla de inicio. Es gratis y solo tarda 10 segundos.</p>
+      ${ios ? `
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">1</div>
+          <div style="font-size:13px;">Toca el botón <strong>Compartir</strong> ⬆️ de Safari (abajo en el centro)</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">2</div>
+          <div style="font-size:13px;">Desplázate y toca <strong>"Añadir a pantalla de inicio"</strong> 🏠</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">3</div>
+          <div style="font-size:13px;">Toca <strong>"Añadir"</strong> arriba a la derecha</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--success-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">4</div>
+          <div style="font-size:13px;">Abre la app desde el icono nuevo y activa las notificaciones 🔔</div>
+        </div>
+      </div>` : `
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">1</div>
+          <div style="font-size:13px;">Toca el botón <strong>"Instalar"</strong> que aparece abajo en Chrome</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">2</div>
+          <div style="font-size:13px;">O toca los 3 puntos ⋮ → <strong>"Añadir a pantalla de inicio"</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--success-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">3</div>
+          <div style="font-size:13px;">Abre la app desde el icono nuevo y activa las notificaciones 🔔</div>
+        </div>
+      </div>`}
+      <button onclick="document.getElementById('install-guide-modal').remove()" style="width:100%;margin-top:20px;padding:12px;background:var(--info-bg);border:1px solid var(--info-border);border-radius:var(--radius-lg);color:var(--info-text);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">Entendido</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+}
+
 function scheduleVisitReminders() {
   if (!notifEnabled() || !state.myName) return;
   const dates = weekDates(state.weekStart);
@@ -952,13 +1024,17 @@ function scheduleVisitReminders() {
     const oneHourBefore  = new Date(visitDateTime.getTime() - 60*60*1000);
     const now = new Date();
 
-    const sameDay9am = new Date(dk+'T09:00:00');
     const slotTimeStr = slotTimes[firstSlot];
+    const sameDay9am = new Date(dk+'T09:00:00');
 
     const schedule = [
-      { time: dayBefore9am,  title: 'Visitas a Amama 📅', body: `Mañana (${dayName}) tienes ${what} con Amama` },
+      // Day before 9am: what's tomorrow
+      { time: dayBefore9am,  title: 'Visitas a Amama 📅', body: `Mañana (${dayName}) tienes ${what} con Amama a las ${slotTimeStr}h` },
+      // Same day 9am: reminder of today's visit
       { time: sameDay9am,    title: 'Visitas a Amama ☀️', body: `Hoy tienes ${what} con Amama a las ${slotTimeStr}h` },
+      // Same day 1h before
       { time: oneHourBefore, title: 'Visitas a Amama ⏰', body: `En 1 hora tienes ${what} con Amama (${slotTimeStr}h)` },
+      // Exact slot time
       { time: visitDateTime, title: 'Visitas a Amama 🏠', body: `¡Ahora toca! Tienes ${what} con Amama` },
     ];
 

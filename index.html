@@ -335,7 +335,7 @@ function renderHeader() {
   const myCol=state.myName?cousinColor(state.myName):null;
   return `<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;margin-bottom:12px;border-bottom:0.5px solid var(--border);">
     <div><h1 style="font-size:17px;font-weight:600;margin:0;">Visitas a Amama</h1>
-    <p style="font-size:11px;color:var(--text3);margin:2px 0 0;">Primos Agirrezabal test</p></div>
+    <p style="font-size:11px;color:var(--text3);margin:2px 0 0;">Primos Agirrezabal</p></div>
     <div style="display:flex;align-items:center;gap:6px;">
       <div style="display:flex;gap:4px;">
         <button onclick="showInstallGuide()" title="Cómo instalar la app" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:6px 8px;cursor:pointer;font-size:14px;">🏠</button>
@@ -840,7 +840,7 @@ function renderLegend() {
   const editing = state.editingCousins;
   return `<div class="card" style="padding:14px;margin-top:8px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div style="font-size:12px;font-weight:500;color:var(--text2);">Primos Agirrezabal test (${state.cousins.length}/9)</div>
+      <div style="font-size:12px;font-weight:500;color:var(--text2);">Primos Agirrezabal(${state.cousins.length}/9)</div>
       ${state.myName===ADMIN_NAME?`<button class="btn" onclick="toggleEditingCousins()" style="font-size:11px;padding:3px 8px;color:${editing?'var(--danger-text)':'var(--text3)'};border-color:${editing?'var(--danger-border)':'var(--border)'};">${editing?'Cancelar':'Gestionar'}</button>`:''}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;">

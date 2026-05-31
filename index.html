@@ -111,6 +111,7 @@ const state = {
   myName: localStorage.getItem('cal_name') || null,
   // Home screen
   myCalendars: [],       // calendars user has joined
+  pendingRequests: [],   // join requests pending approval (for creators)
   // Inside a calendar
   activeCalId: null,
   activeCal: null,       // full calendar object
@@ -152,18 +153,18 @@ function genCode(n=6) {
 
 // ── SUPABASE QUERIES ───────────────────────────────────────────────
 async function loadMyCalendars() {
-  if (!state.myName) { state.myCalendars=[]; return; }
-  // get memberships
+  if (!state.myName) { state.myCalendars=[]; state.pendingRequests=[]; return; }
   const {data:mems} = await db.from('cal_members')
     .select('calendar_id, color_index')
     .eq('name', state.myName);
-  if (!mems || !mems.length) { state.myCalendars=[]; return; }
+  if (!mems || !mems.length) { state.myCalendars=[]; state.pendingRequests=[]; return; }
   const ids = mems.map(m=>m.calendar_id);
   const {data:cals} = await db.from('calendars').select('*').in('id', ids);
   state.myCalendars = (cals||[]).map(c=>{
     const mem = mems.find(m=>m.calendar_id===c.id);
     return {...c, my_color: mem?.color_index ?? 0};
   });
+  await loadPendingRequests();
 }
 
 async function loadCalendarData(calId) {
@@ -200,18 +201,66 @@ async function createCalendar(name, emoji, slots, hasCall, invite_code) {
   return data;
 }
 
-async function joinCalendarByCode(code) {
+async function joinCalendarByCode(code, skipApproval=false) {
   const {data:cals} = await db.from('calendars').select('*').eq('invite_code', code.trim().toUpperCase());
   if (!cals || !cals.length) throw new Error('Código no encontrado');
   const cal = cals[0];
-  // Check not already member
+  // If already a member, just return
   const {data:existing} = await db.from('cal_members').select('id').eq('calendar_id',cal.id).eq('name',state.myName);
-  if (!existing || !existing.length) {
+  if (existing && existing.length) return cal;
+  // Creator joins directly (no approval needed for own calendars)
+  if (skipApproval || cal.created_by === state.myName) {
     const {data:mems} = await db.from('cal_members').select('id').eq('calendar_id',cal.id);
     const ci = (mems?.length||0) % COLORS.length;
     await db.from('cal_members').insert({calendar_id:cal.id, name:state.myName, color_index:ci});
+    return cal;
   }
-  return cal;
+  // Check if already has a pending request
+  const {data:existingReq} = await db.from('cal_join_requests')
+    .select('id,status').eq('calendar_id',cal.id).eq('name',state.myName);
+  if (existingReq && existingReq.length) {
+    const req = existingReq[0];
+    if (req.status==='pending') throw new Error('pending');
+    if (req.status==='rejected') throw new Error('Tu solicitud fue rechazada por el creador.');
+    // approved but not yet member — add them
+    const {data:mems} = await db.from('cal_members').select('id').eq('calendar_id',cal.id);
+    const ci = (mems?.length||0) % COLORS.length;
+    await db.from('cal_members').insert({calendar_id:cal.id, name:state.myName, color_index:ci}).select().single();
+    return cal;
+  }
+  // Create pending request
+  await db.from('cal_join_requests').insert({calendar_id:cal.id, name:state.myName, invite_code:code.trim().toUpperCase()});
+  throw new Error('pending');
+}
+
+async function loadPendingRequests() {
+  if (!state.myName) { state.pendingRequests=[]; return; }
+  // Get calendars where I am the creator
+  const myCalIds = state.myCalendars.filter(c=>c.created_by===state.myName).map(c=>c.id);
+  if (!myCalIds.length) { state.pendingRequests=[]; return; }
+  const {data} = await db.from('cal_join_requests')
+    .select('*').in('calendar_id', myCalIds).eq('status','pending').order('created_at');
+  state.pendingRequests = data || [];
+}
+
+async function approveRequest(reqId) {
+  const req = state.pendingRequests.find(r=>r.id===reqId);
+  if (!req) return;
+  // Add as member
+  const {data:mems} = await db.from('cal_members').select('id').eq('calendar_id',req.calendar_id);
+  const ci = (mems?.length||0) % COLORS.length;
+  await db.from('cal_members').insert({calendar_id:req.calendar_id, name:req.name, color_index:ci});
+  await db.from('cal_join_requests').update({status:'approved'}).eq('id',reqId);
+  state.pendingRequests = state.pendingRequests.filter(r=>r.id!==reqId);
+  // Reload calendar data if we're inside it
+  if (state.activeCalId===req.calendar_id) await loadCalendarData(req.calendar_id);
+  render();
+}
+
+async function rejectRequest(reqId) {
+  await db.from('cal_join_requests').update({status:'rejected'}).eq('id',reqId);
+  state.pendingRequests = state.pendingRequests.filter(r=>r.id!==reqId);
+  render();
 }
 
 async function toggleVisit(calId, date, slot) {
@@ -341,10 +390,14 @@ function renderHome() {
   } else {
     state.myCalendars.forEach(cal=>{
       const slots=cal.slots||[];
+      const pending=state.pendingRequests.filter(r=>r.calendar_id===cal.id);
       html+=`<div class="cal-card" onclick="enterCalendar('${cal.id}')">
         <div class="cal-icon" style="background:var(--bg2);">${cal.emoji||'📅'}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:500;margin-bottom:2px;">${cal.name}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+            <span style="font-size:14px;font-weight:500;">${cal.name}</span>
+            ${pending.length?`<span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;background:var(--danger-bg);color:var(--danger-text);border:.5px solid var(--danger-border);">${pending.length} solicitud${pending.length>1?'es':''}</span>`:''}
+          </div>
           <div style="font-size:11px;color:var(--text3);">${slots.length} slot${slots.length!==1?'s':''}${cal.has_call?' + llamadas':''} · código: <span style="font-family:monospace;letter-spacing:1px;">${cal.invite_code}</span></div>
         </div>
         <span style="font-size:18px;color:var(--text3);">›</span>
@@ -407,7 +460,22 @@ async function doJoin() {
     await loadMyCalendars();
     render();
     setTimeout(()=>enterCalendar(cal.id), 100);
-  } catch(e) { alert(e.message||'Error al unirse'); }
+  } catch(e) {
+    if (e.message==='pending') {
+      closeModal();
+      showJoinPendingBanner();
+    } else {
+      alert(e.message||'Error al unirse');
+    }
+  }
+}
+
+function showJoinPendingBanner() {
+  const banner = document.createElement('div');
+  banner.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text);border-radius:12px;padding:14px 20px;font-size:13px;font-weight:500;text-align:center;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,.15);';
+  banner.innerHTML='⏳ Solicitud enviada<br><span style="font-size:11px;font-weight:400;opacity:.8;">El creador del calendario tiene que aceptarte.</span>';
+  document.body.appendChild(banner);
+  setTimeout(()=>banner.remove(), 4000);
 }
 
 // ── MODAL: CREATE ──────────────────────────────────────────────────
@@ -546,7 +614,8 @@ function renderCalHeader() {
       <div><h1 style="font-size:16px;font-weight:600;margin:0;">${cal.name}</h1>
       <p style="font-size:10px;color:var(--text3);margin:1px 0 0;font-family:monospace;letter-spacing:1px;">${cal.invite_code}</p></div>
     </div>
-    <div style="display:flex;gap:6px;">
+    <div style="display:flex;gap:6px;align-items:center;">
+      ${(()=>{const p=state.pendingRequests.filter(r=>r.calendar_id===cal.id);return p.length&&cal.created_by===state.myName?`<button onclick="openModal('requests')" class="btn" style="font-size:12px;padding:5px 10px;background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger-text);font-weight:600;">👋 ${p.length}</button>`:'';})()}
       <button onclick="openModal('invite')" class="btn" style="font-size:12px;padding:5px 10px;">Invitar</button>
       <button onclick="openModal('editslots')" class="btn" style="font-size:12px;padding:5px 10px;">⚙️</button>
     </div>
@@ -1060,6 +1129,37 @@ function renderMembersLegend() {
   </div>`;
 }
 
+// ── MODAL: REQUESTS ───────────────────────────────────────────────
+function renderModalRequests() {
+  const cal=state.activeCal;
+  const reqs=state.pendingRequests.filter(r=>r.calendar_id===cal.id);
+  return `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:500;">Solicitudes de acceso</div>
+        <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text3);">×</button>
+      </div>
+      ${reqs.length===0
+        ? `<div style="text-align:center;padding:32px 20px;color:var(--text3);font-size:13px;">No hay solicitudes pendientes.</div>`
+        : reqs.map(r=>{
+            const t=new Date(r.created_at).toLocaleDateString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+            return `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg2);border-radius:var(--radius-lg);margin-bottom:8px;">
+              <div style="width:38px;height:38px;border-radius:50%;background:var(--warn-bg);border:1px solid var(--warn-border);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:var(--warn-text);flex-shrink:0;">${r.name.charAt(0).toUpperCase()}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:500;">${r.name}</div>
+                <div style="font-size:10px;color:var(--text3);">${t}</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button onclick="rejectRequest('${r.id}')" style="padding:6px 10px;border-radius:var(--radius);border:.5px solid var(--danger-border);background:var(--danger-bg);color:var(--danger-text);font-size:12px;cursor:pointer;font-family:inherit;">✕ Rechazar</button>
+                <button onclick="approveRequest('${r.id}')" style="padding:6px 10px;border-radius:var(--radius);border:.5px solid var(--success-border);background:var(--success-bg);color:var(--success-text);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;">✓ Aceptar</button>
+              </div>
+            </div>`;
+          }).join('')
+      }
+    </div>
+  </div>`;
+}
+
 // ── MAIN RENDER ────────────────────────────────────────────────────
 function render() {
   const root=document.getElementById('root');
@@ -1068,6 +1168,7 @@ function render() {
   if (state.modal==='create')   modalHtml=renderModalCreate();
   if (state.modal==='invite')   modalHtml=renderModalInvite();
   if (state.modal==='editslots') { liveSlots=null; modalHtml=renderModalEditSlots(); }
+  if (state.modal==='requests') modalHtml=renderModalRequests();
 
   if (!state.myName) { root.innerHTML=renderNameScreen()+modalHtml; return; }
   if (!state.activeCalId) { root.innerHTML=`<div class="app">${renderHome()}</div>`+modalHtml; return; }
@@ -1145,7 +1246,7 @@ async function init() {
       if (state.myName && localStorage.getItem("amama_name") && !localStorage.getItem("amama_migrated") && state.myCalendars.length === 0) {
         localStorage.setItem("amama_migrated", "1"); // marcar como migrado para que no se repita
         try {
-          const cal = await joinCalendarByCode(AMAMA_INVITE_CODE);
+          const cal = await joinCalendarByCode(AMAMA_INVITE_CODE, true);
           await loadMyCalendars();
           render();
           setTimeout(()=>enterCalendar(cal.id), 100);

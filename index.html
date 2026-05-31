@@ -391,7 +391,7 @@ function renderModalJoin() {
         <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text3);">×</button>
       </div>
       <p style="font-size:12px;color:var(--text3);margin-bottom:16px;">Introduce el código de invitación que te han compartido.</p>
-      <input id="join-code" type="text" placeholder="Ej: AMAMA1" style="width:100%;text-transform:uppercase;letter-spacing:2px;font-size:16px;text-align:center;margin-bottom:12px;" maxlength="8"/>
+      <input id="join-code" type="text" placeholder="Código de invitación" style="width:100%;text-transform:uppercase;letter-spacing:2px;font-size:16px;text-align:center;margin-bottom:12px;" maxlength="8"/>
       <button class="btn btn-info" onclick="doJoin()" style="width:100%;padding:10px;font-size:14px;">Unirse</button>
       <p style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center;">También puedes entrar directamente con el enlace que te envíen.</p>
     </div>
@@ -442,7 +442,7 @@ function renderModalCreate() {
       <div style="margin-bottom:12px;">
         <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px;">Código de invitación</label>
         <div style="display:flex;gap:8px;">
-          <input type="text" id="inv-code" value="${s.invite_code}" placeholder="Ej: CASTRO" maxlength="8" style="flex:1;text-transform:uppercase;letter-spacing:2px;" oninput="updateCreating('invite_code',this.value.toUpperCase())"/>
+          <input type="text" id="inv-code" value="${s.invite_code}" placeholder="Ej: FAMILIA" maxlength="8" style="flex:1;text-transform:uppercase;letter-spacing:2px;" oninput="updateCreating('invite_code',this.value.toUpperCase())"/>
           <button class="btn" onclick="randomCode()" style="font-size:12px;">🎲 Aleatorio</button>
         </div>
         <p style="font-size:11px;color:var(--text3);margin-top:4px;">Los demás usarán este código para unirse.</p>

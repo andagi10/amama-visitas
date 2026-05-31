@@ -432,10 +432,8 @@ function renderModalCreate() {
       <div style="margin-bottom:12px;">
         <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px;">Nombre del calendario</label>
         <div style="display:flex;gap:8px;">
-          <select style="width:52px;padding:8px 4px;text-align:center;" onchange="updateCreating('emoji',this.value)">
-            ${CAL_EMOJIS.map(e=>`<option value="${e}" ${s.emoji===e?'selected':''}>${e}</option>`).join('')}
-          </select>
-          <input type="text" value="${s.name}" placeholder="Ej: Visitas a la abuela" style="flex:1;" oninput="updateCreating('name',this.value,false)"/>
+          <input type="text" value="${s.emoji}" maxlength="2" style="width:52px;text-align:center;font-size:22px;padding:4px;" id="create-emoji" oninput="updateCreating('emoji',this.value,false)"/>
+          <input type="text" value="${s.name}" placeholder="Ej: Visitas a la abuela" style="flex:1;" id="create-name" oninput="updateCreating('name',this.value,false)"/>
         </div>
       </div>
 
@@ -478,12 +476,19 @@ function updateSlot(i,key,val) { state.creatingCal.slots[i][key]=val; }
 function randomCode() { const c=genCode(); state.creatingCal.invite_code=c; document.getElementById('inv-code').value=c; }
 
 async function doCreate() {
+  // Read directly from DOM to get latest values (state may not have rerendered)
+  const nameEl = document.querySelector('#create-name');
+  const codeEl = document.getElementById('inv-code');
+  const emojiEl = document.querySelector('#create-emoji');
+  if (nameEl) state.creatingCal.name = nameEl.value;
+  if (codeEl) state.creatingCal.invite_code = codeEl.value.toUpperCase();
+  if (emojiEl) state.creatingCal.emoji = emojiEl.value;
   const {name,emoji,invite_code,slots,hasCall}=state.creatingCal;
   if (!name.trim()) { alert('Pon un nombre al calendario'); return; }
   if (!invite_code.trim()) { alert('Pon un código de invitación'); return; }
   if (invite_code.length < 3) { alert('El código debe tener al menos 3 caracteres'); return; }
   try {
-    const cal = await createCalendar(name.trim(), emoji, slots, hasCall, invite_code.trim().toUpperCase());
+    const cal = await createCalendar(name.trim(), emoji||'📅', slots, hasCall, invite_code.trim().toUpperCase());
     state.creatingCal = {name:'',emoji:'🏠',invite_code:'',slots:[],hasCall:true};
     closeModal();
     await loadMyCalendars();

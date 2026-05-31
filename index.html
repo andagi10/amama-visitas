@@ -629,10 +629,10 @@ function renderModalEditSlots() {
   const slots = liveSlots || calSlots();
   let slotsHtml='';
   slots.forEach((slot,i)=>{
-    slotsHtml+=`<div class="slot-config-row" id="slot-row-${i}">
-      <input type="text" value="${slot.label}" placeholder="Nombre" style="flex:2;" oninput="liveEditSlot(${i},'label',this.value)"/>
-      <input type="text" value="${slot.time||''}" placeholder="Horario" style="flex:1;" oninput="liveEditSlot(${i},'time',this.value)"/>
-      <button onclick="liveRemoveSlot(${i})" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--danger-text);padding:4px;">×</button>
+    slotsHtml+=`<div class="slot-config-row slot-row" data-slot-id="${slot.id}">
+      <input type="text" class="slot-label" value="${slot.label}" placeholder="Nombre" style="flex:2;"/>
+      <input type="text" class="slot-time" value="${slot.time||''}" placeholder="Horario" style="flex:1;"/>
+      <button type="button" onclick="domRemoveSlot(this)" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--danger-text);padding:4px;">×</button>
     </div>`;
   });
   return `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
@@ -658,7 +658,7 @@ function renderModalEditSlots() {
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <label style="font-size:12px;color:var(--text3);">Slots (<span id="live-slots-count">${slots.length}</span>)</label>
-        <button class="btn" onclick="liveAddSlot()" style="font-size:12px;padding:4px 10px;">+ Añadir slot</button>
+        <button class="btn" onclick="domAddSlot()" style="font-size:12px;padding:4px 10px;">+ Añadir slot</button>
       </div>
       <div id="live-slots">${slotsHtml}</div>
       <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg2);border-radius:var(--radius);margin:10px 0;">
@@ -691,47 +691,61 @@ function renderModalEditSlots() {
   </div>`;
 }
 
-// live slot editing — DOM manipulation only, no render()
-let liveSlots = null;
-function initLiveSlots() { if(!liveSlots) liveSlots=[...calSlots().map(s=>({...s}))]; }
+// ── SLOT EDITOR: pure DOM, no state, no render() ──────────────────
+let liveSlots = null; // kept for saveLiveSlots compatibility
+function initLiveSlots() {}; // no-op, DOM is the source of truth now
 
-function slotRowHTML(slot, i) {
-  return `<div class="slot-config-row" id="slot-row-${i}">
-    <input type="text" value="${slot.label}" placeholder="Nombre" style="flex:2;" oninput="liveEditSlot(${i},'label',this.value)"/>
-    <input type="text" value="${slot.time||''}" placeholder="Horario" style="flex:1;" oninput="liveEditSlot(${i},'time',this.value)"/>
-    <button onclick="liveRemoveSlot(${i})" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--danger-text);padding:4px;">×</button>
-  </div>`;
+function getSlotsFromDOM() {
+  const rows = document.querySelectorAll('#live-slots .slot-row');
+  return Array.from(rows).map(row => ({
+    id: row.dataset.slotId,
+    label: row.querySelector('.slot-label').value,
+    time:  row.querySelector('.slot-time').value
+  }));
 }
 
-function liveAddSlot() {
-  initLiveSlots();
-  const n = liveSlots.length + 1;
-  const slot = {id:'slot'+Date.now(), label:'Slot '+n, time:''};
-  liveSlots.push(slot);
+function renderSlotsDOM() {
   const container = document.getElementById('live-slots');
-  if (container) {
-    const div = document.createElement('div');
-    div.innerHTML = slotRowHTML(slot, liveSlots.length-1);
-    container.appendChild(div.firstElementChild);
-    // update counter label
-    const lbl = document.getElementById('live-slots-count');
-    if (lbl) lbl.textContent = liveSlots.length;
-  }
+  if (!container) return;
+  const slots = getSlotsFromDOM();
+  rebuildSlotsDOM(container, slots);
 }
 
-function liveRemoveSlot(i) {
-  initLiveSlots();
-  liveSlots.splice(i, 1);
-  // Re-render just the slots container to fix indices
+function rebuildSlotsDOM(container, slots) {
+  container.innerHTML = slots.map((s,i) => `
+    <div class="slot-config-row slot-row" data-slot-id="${s.id}">
+      <input type="text" class="slot-label" value="${s.label}" placeholder="Nombre" style="flex:2;"/>
+      <input type="text" class="slot-time"  value="${s.time||''}" placeholder="Horario" style="flex:1;"/>
+      <button type="button" onclick="domRemoveSlot(this)" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--danger-text);padding:4px;">×</button>
+    </div>`).join('');
+  const lbl = document.getElementById('live-slots-count');
+  if (lbl) lbl.textContent = slots.length;
+}
+
+function domAddSlot() {
   const container = document.getElementById('live-slots');
-  if (container) {
-    container.innerHTML = liveSlots.map((s,idx) => slotRowHTML(s,idx)).join('');
-    const lbl = document.getElementById('live-slots-count');
-    if (lbl) lbl.textContent = liveSlots.length;
-  }
+  if (!container) return;
+  const slots = getSlotsFromDOM();
+  const n = slots.length + 1;
+  slots.push({id:'slot'+Date.now(), label:'Slot '+n, time:''});
+  rebuildSlotsDOM(container, slots);
+  // focus the new label input
+  const rows = container.querySelectorAll('.slot-row');
+  const last = rows[rows.length-1];
+  if (last) last.querySelector('.slot-label').focus();
 }
 
-function liveEditSlot(i,key,val) { initLiveSlots(); if(liveSlots[i]) liveSlots[i][key]=val; }
+function domRemoveSlot(btn) {
+  const row = btn.closest('.slot-row');
+  if (!row) return;
+  const container = document.getElementById('live-slots');
+  row.remove();
+  // fix counter
+  const lbl = document.getElementById('live-slots-count');
+  if (lbl && container) lbl.textContent = container.querySelectorAll('.slot-row').length;
+}
+
+function liveEditSlot(i,key,val) {} // no-op, DOM handles it
 function liveSetCall(v) { state.activeCal={...state.activeCal,has_call:v}; }
 function liveSetName(v) { state.activeCal={...state.activeCal,name:v}; }
 function liveSetEmoji(v) { state.activeCal={...state.activeCal,emoji:v}; }
@@ -748,9 +762,8 @@ function initLiveMsgs() { if(!liveMsgs) liveMsgs={...(state.activeCal?.custom_me
 function liveMsgEdit(key,val) { initLiveMsgs(); liveMsgs[key]=val; }
 
 async function saveLiveSlots() {
-  initLiveSlots();
   initLiveMsgs();
-  const slots=liveSlots.map(s=>({id:s.id,label:s.label,time:s.time||''}));
+  const slots=getSlotsFromDOM().map(s=>({id:s.id||('slot'+Date.now()+Math.random()), label:s.label||'Sin nombre', time:s.time||''}));
   const hasCall=document.getElementById('live-call')?.checked ?? state.activeCal.has_call;
   const name=(document.getElementById('live-name')?.value||state.activeCal.name).trim();
   const emoji=document.getElementById('live-emoji')?.value || state.activeCal.emoji;
@@ -763,7 +776,7 @@ async function saveLiveSlots() {
   state.activeCal={...state.activeCal, slots, has_call:hasCall, name, emoji, custom_messages};
   const idx=state.myCalendars.findIndex(c=>c.id===state.activeCalId);
   if(idx>=0) state.myCalendars[idx]={...state.myCalendars[idx],slots,has_call:hasCall,name,emoji,custom_messages};
-  liveSlots=null; liveMsgs=null;
+  liveMsgs=null; liveSlots=null;
   closeModal();
 }
 
@@ -1203,7 +1216,7 @@ function render() {
   if (state.modal==='join')     modalHtml=renderModalJoin();
   if (state.modal==='create')   modalHtml=renderModalCreate();
   if (state.modal==='invite')   modalHtml=renderModalInvite();
-  if (state.modal==='editslots') { if(!liveSlots) liveSlots=null; modalHtml=renderModalEditSlots(); }
+  if (state.modal==='editslots') { modalHtml=renderModalEditSlots(); }
   if (state.modal==='requests') modalHtml=renderModalRequests();
 
   if (!state.myName) { root.innerHTML=renderNameScreen()+modalHtml; return; }

@@ -237,11 +237,25 @@ async function joinCalendarByCode(code, skipApproval=false) {
 
 async function loadPendingRequests() {
   if (!state.myName) { state.pendingRequests=[]; return; }
-  // Get calendars where I am the creator
-  const myCalIds = state.myCalendars.filter(c=>c.created_by===state.myName||state.members.find(m=>m.name===state.myName&&m.calendar_id===c.id&&m.is_admin)).map(c=>c.id);
-  if (!myCalIds.length) { state.pendingRequests=[]; return; }
+  if (!state.myCalendars.length) { state.pendingRequests=[]; return; }
+  // Get all calendar IDs the user belongs to
+  const allCalIds = state.myCalendars.map(c=>c.id);
+  // Fetch my membership rows to check is_admin
+  const {data:myMems} = await db.from('cal_members')
+    .select('calendar_id, is_admin')
+    .eq('name', state.myName)
+    .in('calendar_id', allCalIds);
+  // Calendar is managed if I am creator OR admin
+  const managedCalIds = state.myCalendars
+    .filter(c => {
+      if (c.created_by === state.myName) return true;
+      const mem = (myMems||[]).find(m=>m.calendar_id===c.id);
+      return mem?.is_admin === true;
+    })
+    .map(c=>c.id);
+  if (!managedCalIds.length) { state.pendingRequests=[]; return; }
   const {data} = await db.from('cal_join_requests')
-    .select('*').in('calendar_id', myCalIds).eq('status','pending').order('created_at');
+    .select('*').in('calendar_id', managedCalIds).eq('status','pending').order('created_at');
   state.pendingRequests = data || [];
 }
 

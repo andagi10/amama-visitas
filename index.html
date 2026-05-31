@@ -301,19 +301,26 @@ async function deleteMember(calId, name) {
 
 async function promoteAdmin(calId, name) {
   if (!confirm('¿Hacer administrador a '+name+'? Tendrá los mismos permisos que tú.')) return;
-  const {error} = await db.from('cal_members').update({is_admin:true}).eq('calendar_id',calId).eq('name',name);
+  const {data, error} = await db.from('cal_members')
+    .update({is_admin:true})
+    .eq('calendar_id',calId).eq('name',name)
+    .select().single();
   if (error) { alert('Error: '+error.message); return; }
-  const m = state.members.find(x=>x.name===name);
-  if (m) m.is_admin = true;
+  // Update in-memory with fresh DB value
+  const idx = state.members.findIndex(x=>x.name===name);
+  if (idx>=0) state.members[idx] = {...state.members[idx], is_admin: true};
   render();
 }
 
 async function demoteAdmin(calId, name) {
   if (!confirm('¿Quitar permisos de administrador a '+name+'?')) return;
-  const {error} = await db.from('cal_members').update({is_admin:false}).eq('calendar_id',calId).eq('name',name);
+  const {data, error} = await db.from('cal_members')
+    .update({is_admin:false})
+    .eq('calendar_id',calId).eq('name',name)
+    .select().single();
   if (error) { alert('Error: '+error.message); return; }
-  const m = state.members.find(x=>x.name===name);
-  if (m) m.is_admin = false;
+  const idx = state.members.findIndex(x=>x.name===name);
+  if (idx>=0) state.members[idx] = {...state.members[idx], is_admin: false};
   render();
 }
 
@@ -1227,8 +1234,8 @@ function renderMembersLegend() {
           ${amAdmin&&!isMe&&!mIsCreator?`
             <div style="display:flex;gap:2px;margin-left:2px;">
               ${!mIsAdmin
-                ? `<button onclick="promoteAdmin('${calId}','${m.name}')" title="Hacer admin" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3);padding:0 2px;">🛡️</button>`
-                : `<button onclick="demoteAdmin('${calId}','${m.name}')" title="Quitar admin" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--warn-text);padding:0 2px;">🛡️✕</button>`
+                ? `<button onclick="promoteAdmin('${calId}','${m.name}')" title="Hacer admin" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:1px 4px;border:.5px solid var(--border);border-radius:4px;">+admin</button>`
+                : `<button onclick="demoteAdmin('${calId}','${m.name}')" title="Quitar admin" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--warn-text);padding:1px 4px;border:.5px solid var(--warn-border);border-radius:4px;cursor:pointer;">−admin</button>`
               }
               <button onclick="deleteMember('${calId}','${m.name}')" title="Eliminar" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--danger-text);padding:0 2px;">×</button>
             </div>`
@@ -1236,7 +1243,7 @@ function renderMembersLegend() {
         </div>`;
       }).join('')}
     </div>
-    ${amAdmin?`<p style="font-size:11px;color:var(--text3);margin-top:8px;">👑 Creador &nbsp;·&nbsp; 🛡️ Admin &nbsp;·&nbsp; Toca 🛡️ para promover, 🛡️✕ para quitar admin, × para expulsar.</p>`:''}
+    ${amAdmin?`<p style="font-size:11px;color:var(--text3);margin-top:8px;">👑 Creador &nbsp;·&nbsp; 🛡️ Admin &nbsp;·&nbsp; Usa +admin/−admin para gestionar permisos, × para expulsar.</p>`:''}
   </div>`;
 }
 

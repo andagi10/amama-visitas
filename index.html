@@ -555,8 +555,17 @@ function renderModalEditSlots() {
   return `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
     <div class="modal">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:15px;font-weight:500;">Configurar ${cal.name}</div>
+        <div style="font-size:15px;font-weight:500;">Configurar calendario</div>
         <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text3);">×</button>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px;">Nombre y emoji</label>
+        <div style="display:flex;gap:8px;">
+          <select id="live-emoji" style="width:52px;padding:8px 4px;text-align:center;" onchange="liveSetEmoji(this.value)">
+            ${CAL_EMOJIS.map(e=>`<option value="${e}" ${cal.emoji===e?'selected':''}>${e}</option>`).join('')}
+          </select>
+          <input id="live-name" type="text" value="${cal.name}" style="flex:1;" oninput="liveSetName(this.value)"/>
+        </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <label style="font-size:12px;color:var(--text3);">Slots (${slots.length})</label>
@@ -579,16 +588,21 @@ function liveAddSlot() { initLiveSlots(); const n=liveSlots.length+1; liveSlots.
 function liveRemoveSlot(i) { initLiveSlots(); liveSlots.splice(i,1); render(); }
 function liveEditSlot(i,key,val) { initLiveSlots(); liveSlots[i][key]=val; }
 function liveSetCall(v) { state.activeCal={...state.activeCal,has_call:v}; }
+function liveSetName(v) { state.activeCal={...state.activeCal,name:v}; }
+function liveSetEmoji(v) { state.activeCal={...state.activeCal,emoji:v}; }
 
 async function saveLiveSlots() {
   initLiveSlots();
   const slots=liveSlots.map(s=>({id:s.id,label:s.label,time:s.time||''}));
   const hasCall=document.getElementById('live-call')?.checked ?? state.activeCal.has_call;
-  const {error}=await db.from('calendars').update({slots,has_call:hasCall}).eq('id',state.activeCalId);
+  const name=(document.getElementById('live-name')?.value||state.activeCal.name).trim();
+  const emoji=document.getElementById('live-emoji')?.value || state.activeCal.emoji;
+  if (!name) { alert('El nombre no puede estar vacío'); return; }
+  const {error}=await db.from('calendars').update({slots,has_call:hasCall,name,emoji}).eq('id',state.activeCalId);
   if (error) { alert('Error al guardar: '+error.message); return; }
-  state.activeCal={...state.activeCal, slots, has_call:hasCall};
+  state.activeCal={...state.activeCal, slots, has_call:hasCall, name, emoji};
   const idx=state.myCalendars.findIndex(c=>c.id===state.activeCalId);
-  if(idx>=0) state.myCalendars[idx]={...state.myCalendars[idx],slots,has_call:hasCall};
+  if(idx>=0) state.myCalendars[idx]={...state.myCalendars[idx],slots,has_call:hasCall,name,emoji};
   liveSlots=null;
   closeModal();
 }
@@ -1050,8 +1064,10 @@ async function init() {
           return;
         } catch(e) {}
       }
-      // MIGRACIÓN AMAMA: si viene de la app antigua y aún no tiene calendarios
-      if (state.myName && localStorage.getItem("amama_name") && state.myCalendars.length === 0) {
+      // MIGRACIÓN AMAMA: solo se ejecuta una vez por dispositivo
+      // Condiciones: tiene nombre antiguo, nunca se ha migrado, y no tiene calendarios aún
+      if (state.myName && localStorage.getItem("amama_name") && !localStorage.getItem("amama_migrated") && state.myCalendars.length === 0) {
+        localStorage.setItem("amama_migrated", "1"); // marcar como migrado para que no se repita
         try {
           const cal = await joinCalendarByCode(AMAMA_INVITE_CODE);
           await loadMyCalendars();

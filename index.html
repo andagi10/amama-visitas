@@ -432,7 +432,14 @@ function renderModalCreate() {
       <div style="margin-bottom:12px;">
         <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px;">Nombre del calendario</label>
         <div style="display:flex;gap:8px;">
-          <input type="text" value="${s.emoji}" maxlength="2" style="width:52px;text-align:center;font-size:22px;padding:4px;" id="create-emoji" oninput="updateCreating('emoji',this.value,false)"/>
+          <div style="position:relative;">
+            <input type="text" value="${s.emoji}" maxlength="2" style="width:52px;text-align:center;font-size:22px;padding:4px;" id="create-emoji" oninput="updateCreating('emoji',this.value,false)" onfocus="showEmojiPicker('create-emoji')" onblur="hideEmojiPickerDelayed()"/>
+            <div id="emoji-picker-create" style="display:none;position:absolute;top:44px;left:0;z-index:200;background:var(--bg);border:.5px solid var(--border2);border-radius:var(--radius-lg);padding:8px;box-shadow:0 4px 20px rgba(0,0,0,.15);display:none;">
+              <div style="display:flex;flex-wrap:wrap;gap:4px;width:220px;">
+                ${['🏠','🌊','👴','👵','🎉','🏡','🌿','⭐','🏔️','🌺','🐶','🐱','🌸','🍕','🎯','🚗','✈️','🏖️','🎵','💪','🌈','🍀','🦋','🌙','❤️','🔥','🎂','🏋️','🧘','🎸'].map(e=>`<button type="button" onclick="pickEmoji('create-emoji',\'${e}\',false)" style="background:none;border:none;cursor:pointer;font-size:22px;padding:3px;border-radius:6px;line-height:1;" onmousedown="event.preventDefault()">${e}</button>`).join('')}
+              </div>
+            </div>
+          </div>
           <input type="text" value="${s.name}" placeholder="Ej: Visitas a la abuela" style="flex:1;" id="create-name" oninput="updateCreating('name',this.value,false)"/>
         </div>
       </div>
@@ -567,7 +574,14 @@ function renderModalEditSlots() {
       <div style="margin-bottom:12px;">
         <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px;">Nombre y emoji</label>
         <div style="display:flex;gap:8px;">
-          <input id="live-emoji" type="text" value="${cal.emoji}" maxlength="2" style="width:52px;text-align:center;font-size:22px;padding:4px;" oninput="liveSetEmoji(this.value)"/>
+          <div style="position:relative;">
+            <input id="live-emoji" type="text" value="${cal.emoji}" maxlength="2" style="width:52px;text-align:center;font-size:22px;padding:4px;" oninput="liveSetEmoji(this.value)" onfocus="showEmojiPicker('live-emoji')" onblur="hideEmojiPickerDelayed()"/>
+            <div id="emoji-picker-live" style="display:none;position:absolute;top:44px;left:0;z-index:200;background:var(--bg);border:.5px solid var(--border2);border-radius:var(--radius-lg);padding:8px;box-shadow:0 4px 20px rgba(0,0,0,.15);">
+              <div style="display:flex;flex-wrap:wrap;gap:4px;width:220px;">
+                ${['🏠','🌊','👴','👵','🎉','🏡','🌿','⭐','🏔️','🌺','🐶','🐱','🌸','🍕','🎯','🚗','✈️','🏖️','🎵','💪','🌈','🍀','🦋','🌙','❤️','🔥','🎂','🏋️','🧘','🎸'].map(e=>`<button type="button" onclick="pickEmoji('live-emoji',\'${e}\',true)" style="background:none;border:none;cursor:pointer;font-size:22px;padding:3px;border-radius:6px;line-height:1;" onmousedown="event.preventDefault()">${e}</button>`).join('')}
+              </div>
+            </div>
+          </div>
           <input id="live-name" type="text" value="${cal.name}" style="flex:1;" oninput="liveSetName(this.value)"/>
         </div>
         <p style="font-size:10px;color:var(--text3);margin-top:4px;">Escribe cualquier emoji desde tu teclado 😊</p>
@@ -1088,6 +1102,27 @@ async function handleUrlInvite() {
 }
 
 // ── INIT ───────────────────────────────────────────────────────────
+// ── EMOJI PICKER HELPERS ──────────────────────────────────────────
+let emojiPickerTimeout = null;
+function showEmojiPicker(inputId) {
+  const pickerId = inputId === 'create-emoji' ? 'emoji-picker-create' : 'emoji-picker-live';
+  const el = document.getElementById(pickerId);
+  if (el) el.style.display = 'block';
+}
+function hideEmojiPickerDelayed() {
+  emojiPickerTimeout = setTimeout(() => {
+    document.querySelectorAll('[id^="emoji-picker-"]').forEach(el => el.style.display = 'none');
+  }, 200);
+}
+function pickEmoji(inputId, emoji, isLive) {
+  if (emojiPickerTimeout) clearTimeout(emojiPickerTimeout);
+  const input = document.getElementById(inputId);
+  if (input) { input.value = emoji; input.dispatchEvent(new Event('input')); }
+  if (isLive) liveSetEmoji(emoji);
+  else updateCreating('emoji', emoji, false);
+  document.querySelectorAll('[id^="emoji-picker-"]').forEach(el => el.style.display = 'none');
+}
+
 async function init() {
   try {
     if (state.myName) await loadMyCalendars();

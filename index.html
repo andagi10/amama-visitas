@@ -300,7 +300,6 @@ async function deleteMember(calId, name) {
 }
 
 async function promoteAdmin(calId, name) {
-  if (!confirm('¿Hacer administrador a '+name+'? Tendrá los mismos permisos que tú.')) return;
   const {data, error} = await db.from('cal_members')
     .update({is_admin:true})
     .eq('calendar_id',calId).eq('name',name)
@@ -309,11 +308,10 @@ async function promoteAdmin(calId, name) {
   // Update in-memory with fresh DB value
   const idx = state.members.findIndex(x=>x.name===name);
   if (idx>=0) state.members[idx] = {...state.members[idx], is_admin: true};
-  render();
+  state.modal = 'manageMembers'; render();
 }
 
 async function demoteAdmin(calId, name) {
-  if (!confirm('¿Quitar permisos de administrador a '+name+'?')) return;
   const {data, error} = await db.from('cal_members')
     .update({is_admin:false})
     .eq('calendar_id',calId).eq('name',name)
@@ -321,7 +319,7 @@ async function demoteAdmin(calId, name) {
   if (error) { alert('Error: '+error.message); return; }
   const idx = state.members.findIndex(x=>x.name===name);
   if (idx>=0) state.members[idx] = {...state.members[idx], is_admin: false};
-  render();
+  state.modal = 'manageMembers'; render();
 }
 
 async function deleteCalendar(keepHistory) {
@@ -1216,34 +1214,66 @@ function renderDashMember() {
 // ── MEMBERS LEGEND ─────────────────────────────────────────────────
 function renderMembersLegend() {
   const amAdmin = iAmAdmin();
-  const isCreator = state.activeCal?.created_by === state.myName;
   const calId = state.activeCalId;
   return `<div class="card" style="padding:14px;margin-top:8px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <div style="font-size:12px;font-weight:500;color:var(--text2);">Miembros (${state.members.length})</div>
-      ${isCreator ? `<button onclick="openModal('deleteCalendar')" class="btn" style="font-size:11px;padding:3px 8px;color:var(--danger-text);border-color:var(--danger-border);">🗑 Eliminar calendario</button>` : ''}
+      ${amAdmin ? `<button onclick="openModal('manageMembers')" class="btn" style="font-size:11px;padding:3px 10px;">Gestionar</button>` : ''}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;">
       ${state.members.map(m=>{
         const col=COLORS[m.color_index%COLORS.length], isMe=m.name===state.myName;
         const mIsAdmin=memberIsAdmin(m.name);
         const mIsCreator=state.activeCal?.created_by===m.name;
-        return `<div class="name-badge" style="background:${col.bg};border:${isMe?'1.5px':'0.5px'} solid ${col.dot}50;gap:4px;">
+        return `<div class="name-badge" style="background:${col.bg};border:${isMe?'1.5px':'0.5px'} solid ${col.dot}50;">
           <span class="dot" style="background:${col.dot};"></span>
           <span style="font-size:12px;color:${col.text};font-weight:${isMe?'500':'400'};">${m.name}${isMe?' (tú)':''}${mIsCreator?' 👑':mIsAdmin?' 🛡️':''}</span>
-          ${amAdmin&&!isMe&&!mIsCreator?`
-            <div style="display:flex;gap:2px;margin-left:2px;">
-              ${!mIsAdmin
-                ? `<button onclick="promoteAdmin('${calId}','${m.name}')" title="Hacer admin" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:1px 4px;border:.5px solid var(--border);border-radius:4px;">+admin</button>`
-                : `<button onclick="demoteAdmin('${calId}','${m.name}')" title="Quitar admin" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--warn-text);padding:1px 4px;border:.5px solid var(--warn-border);border-radius:4px;cursor:pointer;">−admin</button>`
-              }
-              <button onclick="deleteMember('${calId}','${m.name}')" title="Eliminar" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--danger-text);padding:0 2px;">×</button>
-            </div>`
-          :''}
         </div>`;
       }).join('')}
     </div>
-    ${amAdmin?`<p style="font-size:11px;color:var(--text3);margin-top:8px;">👑 Creador &nbsp;·&nbsp; 🛡️ Admin &nbsp;·&nbsp; Usa +admin/−admin para gestionar permisos, × para expulsar.</p>`:''}
+  </div>`;
+}
+
+// ── MODAL: MANAGE MEMBERS ─────────────────────────────────────────
+function renderModalManageMembers() {
+  const cal = state.activeCal;
+  const calId = state.activeCalId;
+  const isCreator = cal?.created_by === state.myName;
+  return `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:500;">Gestionar miembros</div>
+        <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text3);">×</button>
+      </div>
+      ${state.members.map(m=>{
+        const col=COLORS[m.color_index%COLORS.length];
+        const isMe=m.name===state.myName;
+        const mIsCreator=cal?.created_by===m.name;
+        const mIsAdmin=memberIsAdmin(m.name);
+        const roleLabel=mIsCreator?'👑 Creador':mIsAdmin?'🛡️ Admin':'👁 Viewer';
+        const roleBg=mIsCreator?'var(--warn-bg)':mIsAdmin?'var(--info-bg)':'var(--bg2)';
+        const roleColor=mIsCreator?'var(--warn-text)':mIsAdmin?'var(--info-text)':'var(--text3)';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg2);border-radius:var(--radius-lg);margin-bottom:8px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:${col.bg};border:1.5px solid ${col.dot};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:${col.text};flex-shrink:0;">${m.name.charAt(0).toUpperCase()}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:500;">${m.name}${isMe?' (tú)':''}</div>
+            <div style="font-size:11px;padding:1px 7px;border-radius:20px;background:${roleBg};color:${roleColor};display:inline-block;margin-top:2px;">${roleLabel}</div>
+          </div>
+          ${!isMe&&!mIsCreator?`
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            <div style="display:flex;gap:4px;">
+              <button onclick="promoteAdmin('${calId}','${m.name}')" style="padding:4px 10px;border-radius:var(--radius);border:.5px solid var(--info-border);background:${mIsAdmin?'var(--info-bg)':'var(--bg)'};color:${mIsAdmin?'var(--info-text)':'var(--text3)'};font-size:11px;font-weight:${mIsAdmin?'500':'400'};cursor:pointer;font-family:inherit;">🛡️ Admin</button>
+              <button onclick="demoteAdmin('${calId}','${m.name}')" style="padding:4px 10px;border-radius:var(--radius);border:.5px solid var(--border);background:${!mIsAdmin?'var(--bg2)':'var(--bg)'};color:${!mIsAdmin?'var(--text)':'var(--text3)'};font-size:11px;font-weight:${!mIsAdmin?'500':'400'};cursor:pointer;font-family:inherit;">👁 Viewer</button>
+            </div>
+            <button onclick="deleteMember('${calId}','${m.name}');closeModal();" style="padding:3px 10px;border-radius:var(--radius);border:.5px solid var(--danger-border);background:var(--danger-bg);color:var(--danger-text);font-size:11px;cursor:pointer;font-family:inherit;">Expulsar</button>
+          </div>`:''}
+        </div>`;
+      }).join('')}
+      ${isCreator?`
+      <div style="border-top:.5px solid var(--border);margin-top:8px;padding-top:12px;">
+        <button onclick="closeModal();setTimeout(()=>openModal('deleteCalendar'),100);" style="width:100%;padding:10px;border-radius:var(--radius-lg);border:.5px solid var(--danger-border);background:var(--danger-bg);color:var(--danger-text);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;">🗑 Eliminar calendario</button>
+      </div>`:''}
+    </div>
   </div>`;
 }
 
@@ -1314,6 +1344,7 @@ function render() {
   if (state.modal==='editslots') { modalHtml=renderModalEditSlots(); }
   if (state.modal==='requests') modalHtml=renderModalRequests();
   if (state.modal==='deleteCalendar') modalHtml=renderModalDeleteCalendar();
+  if (state.modal==='manageMembers') modalHtml=renderModalManageMembers();
 
   if (!state.myName) { root.innerHTML=renderNameScreen()+modalHtml; return; }
   if (!state.activeCalId) { root.innerHTML=`<div class="app">${renderHome()}</div>`+modalHtml; return; }

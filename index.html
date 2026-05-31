@@ -112,6 +112,7 @@ const state = {
   // Home screen
   myCalendars: [],       // calendars user has joined
   pendingRequests: [],   // join requests pending approval (for creators)
+  adminPicker: null,     // {calId, date, slot} for admin slot picker
   // Inside a calendar
   activeCalId: null,
   activeCal: null,       // full calendar object
@@ -253,20 +254,25 @@ async function approveRequest(reqId) {
   await db.from('cal_members').insert({calendar_id:req.calendar_id, name:req.name, color_index:ci});
   await db.from('cal_join_requests').update({status:'approved'}).eq('id',reqId);
   state.pendingRequests = state.pendingRequests.filter(r=>r.id!==reqId);
-  // Reload calendar data if we're inside it
   if (state.activeCalId===req.calendar_id) await loadCalendarData(req.calendar_id);
+  // Keep requests modal open if there are more pending
+  const remaining = state.pendingRequests.filter(r=>r.calendar_id===state.activeCalId);
+  if (remaining.length) state.modal='requests'; else state.modal=null;
   render();
 }
 
 async function rejectRequest(reqId) {
   await db.from('cal_join_requests').update({status:'rejected'}).eq('id',reqId);
   state.pendingRequests = state.pendingRequests.filter(r=>r.id!==reqId);
+  const remaining = state.pendingRequests.filter(r=>r.calendar_id===state.activeCalId);
+  if (remaining.length) state.modal='requests'; else state.modal=null;
   render();
 }
 
-async function toggleVisit(calId, date, slot) {
-  if (!state.myName) return;
-  const existing = state.visits.find(v=>v.calendar_id===calId&&v.date===date&&v.slot===slot&&v.member_name===state.myName);
+async function toggleVisit(calId, date, slot, memberName) {
+  const name = memberName || state.myName;
+  if (!name) return;
+  const existing = state.visits.find(v=>v.calendar_id===calId&&v.date===date&&v.slot===slot&&v.member_name===name);
   if (existing) {
     if (String(existing.id).startsWith('temp_')) { state.visits=state.visits.filter(v=>v.id!==existing.id); render(); return; }
     state.visits=state.visits.filter(v=>v.id!==existing.id); render();
@@ -274,12 +280,19 @@ async function toggleVisit(calId, date, slot) {
     if (error) { state.visits.push(existing); render(); alert('Error al borrar: '+error.message); }
   } else {
     const tempId='temp_'+Date.now();
-    state.visits.push({id:tempId, calendar_id:calId, date, slot, member_name:state.myName});
+    state.visits.push({id:tempId, calendar_id:calId, date, slot, member_name:name});
     render();
-    const {data,error}=await db.from('cal_visits').insert({calendar_id:calId,date,slot,member_name:state.myName}).select().single();
+    const {data,error}=await db.from('cal_visits').insert({calendar_id:calId,date,slot,member_name:name}).select().single();
     if (error) { state.visits=state.visits.filter(v=>v.id!==tempId); render(); alert('Error al guardar: '+error.message); }
     else if (data) { const idx=state.visits.findIndex(v=>v.id===tempId); if(idx>=0)state.visits[idx]=data; }
   }
+}
+
+// Admin opens a picker to add/remove any member from a slot
+function openAdminSlotPicker(calId, date, slot) {
+  state.adminPicker = {calId, date, slot};
+  state.modal = 'adminSlotPicker';
+  render();
 }
 
 async function saveNote(calId, date, text) {
@@ -898,11 +911,15 @@ function renderWeek() {
         const border=iAmGoing?'1.5px solid var(--info-border)':vis.length?'0.5px solid var(--success-border)':'0.5px solid var(--border)';
         const lc=iAmGoing?'var(--info-text)':vis.length?'var(--success-text)':'var(--text2)';
         const names=vis.map(pillHTML).join('');
-        html+=`<button class="slot-btn" onclick="toggleVisit('${calId}','${dkey}','${slot.id}')" style="background:${bg};border:${border};">
-          <div style="font-weight:500;color:${lc};">${slot.label}</div>
-          ${slot.time?`<div style="font-size:10px;color:var(--text3);margin-top:1px;">${slot.time}</div>`:''}
-          ${names?`<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-top:5px;gap:1px;">${names}</div>`:''}
-        </button>`;
+        const adminBtn=iAmAdmin()?`<div onclick="event.stopPropagation();openAdminSlotPicker('${calId}','${dkey}','${slot.id}')" style="position:absolute;top:4px;right:4px;font-size:10px;background:rgba(0,0,0,.08);border-radius:4px;padding:1px 4px;color:var(--text3);">✎</div>`:'';
+        html+=`<div style="flex:1;position:relative;">
+          <button class="slot-btn" onclick="toggleVisit('${calId}','${dkey}','${slot.id}')" style="width:100%;background:${bg};border:${border};">
+            <div style="font-weight:500;color:${lc};">${slot.label}</div>
+            ${slot.time?`<div style="font-size:10px;color:var(--text3);margin-top:1px;">${slot.time}</div>`:''}
+            ${names?`<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-top:5px;gap:1px;">${names}</div>`:''}
+          </button>
+          ${adminBtn}
+        </div>`;
       });
       html+=`</div>`;
     } else {
@@ -912,24 +929,26 @@ function renderWeek() {
       const border=iAmGoing?'1.5px solid var(--info-border)':vis.length?'0.5px solid var(--success-border)':'0.5px solid var(--border)';
       const lc=iAmGoing?'var(--info-text)':vis.length?'var(--success-text)':'var(--text2)';
       const names=vis.map(pillHTML).join('');
-      html+=`<div style="padding:8px;">
+      html+=`<div style="padding:8px;position:relative;">
         <button onclick="toggleVisit('${calId}','${dkey}','day')" style="width:100%;border-radius:var(--radius);padding:10px;font-family:inherit;font-size:13px;cursor:pointer;background:${bg};border:${border};color:${lc};font-weight:500;">
           ${iAmGoing?'✓ Apuntado':'Marcar visita'}
           ${names?`<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-top:5px;gap:1px;">${names}</div>`:''}
         </button>
+        ${iAmAdmin()?`<div onclick="openAdminSlotPicker('${calId}','${dkey}','day')" style="position:absolute;top:10px;right:10px;font-size:10px;background:rgba(0,0,0,.08);border-radius:4px;padding:1px 4px;color:var(--text3);">✎</div>`:''}
       </div>`;
     }
 
     if (hasCall) {
       const callVis=callVisitors(dkey), iAmCalling=state.myName&&callVis.includes(state.myName);
       const callNames=callVis.map(pillHTML).join('');
-      html+=`<div style="padding:0 8px 8px;">
-        <button onclick="toggleVisit('${calId}','${dkey}','call')" style="width:100%;border-radius:var(--radius);padding:8px 12px;font-family:inherit;font-size:12px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;border:${iAmCalling?'1.5px solid var(--info-border)':'0.5px solid var(--border)'};background:${iAmCalling?'var(--info-bg)':'var(--bg2)'};">
+      html+=`<div style="padding:0 8px 8px;display:flex;gap:6px;align-items:center;">
+        <button onclick="toggleVisit('${calId}','${dkey}','call')" style="flex:1;border-radius:var(--radius);padding:8px 12px;font-family:inherit;font-size:12px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;border:${iAmCalling?'1.5px solid var(--info-border)':'0.5px solid var(--border)'};background:${iAmCalling?'var(--info-bg)':'var(--bg2)'};">
           <span style="font-size:14px;">📞</span>
           <span style="font-weight:500;color:${iAmCalling?'var(--info-text)':'var(--text2)'};">Llamada telefónica</span>
           ${callNames?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-left:4px;">${callNames}</div>`:''}
           ${iAmCalling?`<span style="margin-left:auto;font-size:10px;font-weight:500;color:var(--info-text);">✓ apuntado</span>`:`<span style="margin-left:auto;font-size:10px;color:var(--text3);">Toca para apuntarte</span>`}
         </button>
+        ${iAmAdmin()?`<button onclick="openAdminSlotPicker('${calId}','${dkey}','call')" style="padding:8px 10px;border-radius:var(--radius);border:.5px solid var(--border);background:var(--bg);font-size:10px;color:var(--text3);cursor:pointer;">✎</button>`:''}
       </div>`;
     }
     html+=`</div>`;
@@ -1234,6 +1253,41 @@ function renderMembersLegend() {
   </div>`;
 }
 
+// ── MODAL: ADMIN SLOT PICKER ──────────────────────────────────────
+function renderModalAdminSlotPicker() {
+  const {calId, date, slot} = state.adminPicker || {};
+  if (!calId) return '';
+  const slotObj = calSlots().find(s=>s.id===slot) || {label: slot==='call'?'Llamada':'Día', id:slot};
+  const d = new Date(date+'T12:00:00');
+  const dateLabel = d.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'short'});
+  const visitors = slotVisitors(date, slot);
+  const callMode = slot === 'call';
+
+  return `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-size:15px;font-weight:500;">${callMode?'📞 Llamada':slotObj.label}</div>
+        <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text3);">×</button>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px;">${dateLabel}</div>
+      <div style="font-size:12px;font-weight:500;margin-bottom:8px;">Toca un miembro para añadir o quitar:</div>
+      ${state.members.map(m=>{
+        const col = COLORS[m.color_index%COLORS.length];
+        const isIn = visitors.includes(m.name);
+        return `<button onclick="toggleVisit('${calId}','${date}','${slot}','${m.name}');state.adminPicker.refreshed=true;setTimeout(()=>{if(state.modal==='adminSlotPicker'){state.adminPicker={calId:'${calId}',date:'${date}',slot:'${slot}'};render();}},150);"
+          style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-lg);margin-bottom:6px;cursor:pointer;font-family:inherit;font-size:13px;
+          background:${isIn?'var(--success-bg)':'var(--bg2)'};
+          border:${isIn?'1.5px solid var(--success-border)':'.5px solid var(--border)'};
+          color:${isIn?'var(--success-text)':'var(--text)'};">
+          <span class="dot" style="background:${col.dot};flex-shrink:0;"></span>
+          <span style="flex:1;font-weight:${isIn?'500':'400'};text-align:left;">${m.name}</span>
+          <span style="font-size:13px;">${isIn?'✓ Apuntado':'+ Añadir'}</span>
+        </button>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
 // ── MODAL: MANAGE MEMBERS ─────────────────────────────────────────
 function renderModalManageMembers() {
   const cal = state.activeCal;
@@ -1345,6 +1399,7 @@ function render() {
   if (state.modal==='requests') modalHtml=renderModalRequests();
   if (state.modal==='deleteCalendar') modalHtml=renderModalDeleteCalendar();
   if (state.modal==='manageMembers') modalHtml=renderModalManageMembers();
+  if (state.modal==='adminSlotPicker') modalHtml=renderModalAdminSlotPicker();
 
   if (!state.myName) { root.innerHTML=renderNameScreen()+modalHtml; return; }
   if (!state.activeCalId) { root.innerHTML=`<div class="app">${renderHome()}</div>`+modalHtml; return; }

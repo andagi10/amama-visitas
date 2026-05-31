@@ -435,14 +435,14 @@ function renderModalCreate() {
           <select style="width:52px;padding:8px 4px;text-align:center;" onchange="updateCreating('emoji',this.value)">
             ${CAL_EMOJIS.map(e=>`<option value="${e}" ${s.emoji===e?'selected':''}>${e}</option>`).join('')}
           </select>
-          <input type="text" value="${s.name}" placeholder="Ej: Casa de Castro" style="flex:1;" oninput="updateCreating('name',this.value)"/>
+          <input type="text" value="${s.name}" placeholder="Ej: Visitas a la abuela" style="flex:1;" oninput="updateCreating('name',this.value,false)"/>
         </div>
       </div>
 
       <div style="margin-bottom:12px;">
         <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px;">Código de invitación</label>
         <div style="display:flex;gap:8px;">
-          <input type="text" id="inv-code" value="${s.invite_code}" placeholder="Ej: FAMILIA" maxlength="8" style="flex:1;text-transform:uppercase;letter-spacing:2px;" oninput="updateCreating('invite_code',this.value.toUpperCase())"/>
+          <input type="text" id="inv-code" value="${s.invite_code}" placeholder="Ej: FAMILIA" maxlength="8" style="flex:1;text-transform:uppercase;letter-spacing:2px;" oninput="updateCreating('invite_code',this.value.toUpperCase(),false)"/>
           <button class="btn" onclick="randomCode()" style="font-size:12px;">🎲 Aleatorio</button>
         </div>
         <p style="font-size:11px;color:var(--text3);margin-top:4px;">Los demás usarán este código para unirse.</p>
@@ -466,7 +466,7 @@ function renderModalCreate() {
   </div>`;
 }
 
-function updateCreating(key,val) { state.creatingCal[key]=val; render(); }
+function updateCreating(key,val,rerender=true) { state.creatingCal[key]=val; if(rerender) render(); }
 function addSlot() {
   const n=state.creatingCal.slots.length+1;
   const defaults=['Mañana','Tarde','Noche','Madrugada','Medio día'];

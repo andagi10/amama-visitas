@@ -293,15 +293,16 @@ function renderAmamaStatus() {
   const covered=dates.filter(d=>{const dk=localDs(d);return dayVisitors(dk).length>0;}).length;
   const solo=7-covered;
   const calName=state.activeCal?.name||'';
+  const cm=state.activeCal?.custom_messages||{};
   const levels=[
-    {emoji:'😭',title:`${calName} está solita toda la semana`,sub:'¡Nadie se ha apuntado aún!',bg:'var(--danger-bg)',bc:'var(--danger-border)',tc:'var(--danger-text)'},
-    {emoji:'😢',title:`${calName} estará casi sola esta semana`,sub:'Solo 1 día con visita.',bg:'var(--danger-bg)',bc:'var(--danger-border)',tc:'var(--danger-text)'},
-    {emoji:'😔',title:`${calName} tendrá pocos días acompañada`,sub:'2 días cubiertos.',bg:'var(--danger-bg)',bc:'var(--danger-border)',tc:'var(--danger-text)'},
-    {emoji:'🙁',title:'La mitad de la semana sin visitas',sub:'3 días cubiertos.',bg:'var(--warn-bg)',bc:'var(--warn-border)',tc:'var(--warn-text)'},
-    {emoji:'😊',title:'¡Bien! Buena semana',sub:'4 días cubiertos.',bg:'var(--warn-bg)',bc:'var(--warn-border)',tc:'var(--warn-text)'},
-    {emoji:'😄',title:'¡Muy bien! Casi sin huecos',sub:'5 días cubiertos.',bg:'var(--success-bg)',bc:'var(--success-border)',tc:'var(--success-text)'},
-    {emoji:'🤩',title:'¡Casi perfecta! Solo 1 día solo',sub:'6 días cubiertos.',bg:'var(--success-bg)',bc:'var(--success-border)',tc:'var(--success-text)'},
-    {emoji:'🥰',title:'¡Semana perfecta! Siempre acompañada',sub:'Todos los días cubiertos.',bg:'var(--success-bg)',bc:'var(--success-border)',tc:'var(--success-text)'},
+    {emoji:'😭',title:cm.msg0_title||`${calName} está solita toda la semana`,sub:cm.msg0_sub||'¡Nadie se ha apuntado aún!',bg:'var(--danger-bg)',bc:'var(--danger-border)',tc:'var(--danger-text)'},
+    {emoji:'😢',title:cm.msg1_title||`${calName} estará casi sola esta semana`,sub:cm.msg1_sub||'Solo 1 día con visita.',bg:'var(--danger-bg)',bc:'var(--danger-border)',tc:'var(--danger-text)'},
+    {emoji:'😔',title:cm.msg2_title||`${calName} tendrá pocos días acompañada`,sub:cm.msg2_sub||'2 días cubiertos.',bg:'var(--danger-bg)',bc:'var(--danger-border)',tc:'var(--danger-text)'},
+    {emoji:'🙁',title:cm.msg3_title||'La mitad de la semana sin visitas',sub:cm.msg3_sub||'3 días cubiertos.',bg:'var(--warn-bg)',bc:'var(--warn-border)',tc:'var(--warn-text)'},
+    {emoji:'😊',title:cm.msg4_title||'¡Bien! Buena semana',sub:cm.msg4_sub||'4 días cubiertos.',bg:'var(--warn-bg)',bc:'var(--warn-border)',tc:'var(--warn-text)'},
+    {emoji:'😄',title:cm.msg5_title||'¡Muy bien! Casi sin huecos',sub:cm.msg5_sub||'5 días cubiertos.',bg:'var(--success-bg)',bc:'var(--success-border)',tc:'var(--success-text)'},
+    {emoji:'🤩',title:cm.msg6_title||'¡Casi perfecta! Solo 1 día solo',sub:cm.msg6_sub||'6 días cubiertos.',bg:'var(--success-bg)',bc:'var(--success-border)',tc:'var(--success-text)'},
+    {emoji:'🥰',title:cm.msg7_title||'¡Semana perfecta! Siempre acompañada',sub:cm.msg7_sub||'Todos los días cubiertos.',bg:'var(--success-bg)',bc:'var(--success-border)',tc:'var(--success-text)'},
   ];
   const lv=levels[7-Math.min(solo,7)];
   const pct=Math.round((covered/7)*100);
@@ -561,11 +562,10 @@ function renderModalEditSlots() {
       <div style="margin-bottom:12px;">
         <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px;">Nombre y emoji</label>
         <div style="display:flex;gap:8px;">
-          <select id="live-emoji" style="width:52px;padding:8px 4px;text-align:center;" onchange="liveSetEmoji(this.value)">
-            ${CAL_EMOJIS.map(e=>`<option value="${e}" ${cal.emoji===e?'selected':''}>${e}</option>`).join('')}
-          </select>
+          <input id="live-emoji" type="text" value="${cal.emoji}" maxlength="2" style="width:52px;text-align:center;font-size:22px;padding:4px;" oninput="liveSetEmoji(this.value)"/>
           <input id="live-name" type="text" value="${cal.name}" style="flex:1;" oninput="liveSetName(this.value)"/>
         </div>
+        <p style="font-size:10px;color:var(--text3);margin-top:4px;">Escribe cualquier emoji desde tu teclado 😊</p>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <label style="font-size:12px;color:var(--text3);">Slots (${slots.length})</label>
@@ -576,7 +576,28 @@ function renderModalEditSlots() {
         <input type="checkbox" id="live-call" ${cal.has_call?'checked':''} onchange="liveSetCall(this.checked)" style="width:16px;height:16px;padding:0;"/>
         <label for="live-call" style="font-size:13px;cursor:pointer;">Botón de llamada 📞</label>
       </div>
-      <button class="btn btn-success" onclick="saveLiveSlots()" style="width:100%;padding:10px;font-size:14px;">Guardar cambios</button>
+      <div style="margin-top:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <label style="font-size:12px;color:var(--text3);">Mensajes de estado</label>
+          <button class="btn" onclick="toggleMsgEdit()" id="msg-toggle-btn" style="font-size:11px;padding:3px 8px;">Editar</button>
+        </div>
+        <div id="msg-fields" style="display:none;">
+          <p style="font-size:10px;color:var(--text3);margin-bottom:8px;">Personaliza los textos que aparecen según cuántos días estén cubiertos. Deja en blanco para usar el texto por defecto.</p>
+          ${[
+            {k:'0',label:'😭 0 días cubiertos'},
+            {k:'4',label:'😊 4 días cubiertos'},
+            {k:'7',label:'🥰 7 días cubiertos (perfecto)'},
+          ].map(({k,label})=>{
+            const cm=cal.custom_messages||{};
+            return `<div style="margin-bottom:10px;">
+              <div style="font-size:11px;font-weight:500;margin-bottom:4px;">${label}</div>
+              <input type="text" placeholder="Título (dejar vacío = por defecto)" value="${cm['msg'+k+'_title']||''}" style="width:100%;margin-bottom:4px;" oninput="liveMsgEdit('msg${k}_title',this.value)"/>
+              <input type="text" placeholder="Subtítulo" value="${cm['msg'+k+'_sub']||''}" style="width:100%;" oninput="liveMsgEdit('msg${k}_sub',this.value)"/>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <button class="btn btn-success" onclick="saveLiveSlots()" style="width:100%;padding:10px;font-size:14px;margin-top:10px;">Guardar cambios</button>
     </div>
   </div>`;
 }
@@ -590,20 +611,35 @@ function liveEditSlot(i,key,val) { initLiveSlots(); liveSlots[i][key]=val; }
 function liveSetCall(v) { state.activeCal={...state.activeCal,has_call:v}; }
 function liveSetName(v) { state.activeCal={...state.activeCal,name:v}; }
 function liveSetEmoji(v) { state.activeCal={...state.activeCal,emoji:v}; }
+function toggleMsgEdit() {
+  const el=document.getElementById('msg-fields');
+  const btn=document.getElementById('msg-toggle-btn');
+  if(!el||!btn)return;
+  const open=el.style.display==='none';
+  el.style.display=open?'block':'none';
+  btn.textContent=open?'Cerrar':'Editar';
+}
+let liveMsgs = null;
+function initLiveMsgs() { if(!liveMsgs) liveMsgs={...(state.activeCal?.custom_messages||{})}; }
+function liveMsgEdit(key,val) { initLiveMsgs(); liveMsgs[key]=val; }
 
 async function saveLiveSlots() {
   initLiveSlots();
+  initLiveMsgs();
   const slots=liveSlots.map(s=>({id:s.id,label:s.label,time:s.time||''}));
   const hasCall=document.getElementById('live-call')?.checked ?? state.activeCal.has_call;
   const name=(document.getElementById('live-name')?.value||state.activeCal.name).trim();
   const emoji=document.getElementById('live-emoji')?.value || state.activeCal.emoji;
   if (!name) { alert('El nombre no puede estar vacío'); return; }
-  const {error}=await db.from('calendars').update({slots,has_call:hasCall,name,emoji}).eq('id',state.activeCalId);
+  // Clean out empty strings from custom_messages
+  const custom_messages={};
+  Object.entries(liveMsgs).forEach(([k,v])=>{ if(v&&v.trim()) custom_messages[k]=v.trim(); });
+  const {error}=await db.from('calendars').update({slots,has_call:hasCall,name,emoji,custom_messages}).eq('id',state.activeCalId);
   if (error) { alert('Error al guardar: '+error.message); return; }
-  state.activeCal={...state.activeCal, slots, has_call:hasCall, name, emoji};
+  state.activeCal={...state.activeCal, slots, has_call:hasCall, name, emoji, custom_messages};
   const idx=state.myCalendars.findIndex(c=>c.id===state.activeCalId);
-  if(idx>=0) state.myCalendars[idx]={...state.myCalendars[idx],slots,has_call:hasCall,name,emoji};
-  liveSlots=null;
+  if(idx>=0) state.myCalendars[idx]={...state.myCalendars[idx],slots,has_call:hasCall,name,emoji,custom_messages};
+  liveSlots=null; liveMsgs=null;
   closeModal();
 }
 

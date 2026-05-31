@@ -100,6 +100,12 @@ const COLORS = [
 ];
 const CAL_EMOJIS = ['🏠','🌊','👴','🎉','🏡','🌿','⭐','🎯','🏔️','🌺'];
 
+// ── AMAMA MIGRATION: si tenían nombre guardado en la app antigua, lo reutilizamos
+const AMAMA_INVITE_CODE = 'AMAMA1'; // debe coincidir con el código que uses en Supabase
+if (!localStorage.getItem('cal_name') && localStorage.getItem('amama_name')) {
+  localStorage.setItem('cal_name', localStorage.getItem('amama_name'));
+}
+
 // ── STATE ──────────────────────────────────────────────────────────
 const state = {
   myName: localStorage.getItem('cal_name') || null,
@@ -1043,6 +1049,16 @@ async function init() {
           setTimeout(()=>enterCalendar(cal.id),100);
           return;
         } catch(e) {}
+      }
+      // MIGRACIÓN AMAMA: si viene de la app antigua y aún no tiene calendarios
+      if (state.myName && localStorage.getItem("amama_name") && state.myCalendars.length === 0) {
+        try {
+          const cal = await joinCalendarByCode(AMAMA_INVITE_CODE);
+          await loadMyCalendars();
+          render();
+          setTimeout(()=>enterCalendar(cal.id), 100);
+          return;
+        } catch(e) { /* Amama no existe aún en Supabase, muestra home */ }
       }
       render();
     }

@@ -236,7 +236,7 @@ async function joinCalendarByCode(code, skipApproval=false) {
 async function loadPendingRequests() {
   if (!state.myName) { state.pendingRequests=[]; return; }
   // Get calendars where I am the creator
-  const myCalIds = state.myCalendars.filter(c=>c.created_by===state.myName).map(c=>c.id);
+  const myCalIds = state.myCalendars.filter(c=>c.created_by===state.myName||state.members.find(m=>m.name===state.myName&&m.calendar_id===c.id&&m.is_admin)).map(c=>c.id);
   if (!myCalIds.length) { state.pendingRequests=[]; return; }
   const {data} = await db.from('cal_join_requests')
     .select('*').in('calendar_id', myCalIds).eq('status','pending').order('created_at');
@@ -289,13 +289,48 @@ async function saveNote(calId, date, text) {
 }
 
 async function deleteMember(calId, name) {
-  if (!confirm('¿Borrar a '+name+' y todas sus visitas de este calendario?')) return;
+  if (!confirm('¿Eliminar a '+name+' del calendario?')) return;
   await db.from('cal_visits').delete().eq('calendar_id',calId).eq('member_name',name);
   await db.from('cal_members').delete().eq('calendar_id',calId).eq('name',name);
   if (name===state.myName) { await leaveCalendar(); return; }
   state.members=state.members.filter(m=>m.name!==name);
   state.visits=state.visits.filter(v=>v.member_name!==name);
   render();
+}
+
+async function promoteAdmin(calId, name) {
+  if (!confirm('¿Hacer administrador a '+name+'? Tendrá los mismos permisos que tú.')) return;
+  const {error} = await db.from('cal_members').update({is_admin:true}).eq('calendar_id',calId).eq('name',name);
+  if (error) { alert('Error: '+error.message); return; }
+  const m = state.members.find(x=>x.name===name);
+  if (m) m.is_admin = true;
+  render();
+}
+
+async function demoteAdmin(calId, name) {
+  if (!confirm('¿Quitar permisos de administrador a '+name+'?')) return;
+  const {error} = await db.from('cal_members').update({is_admin:false}).eq('calendar_id',calId).eq('name',name);
+  if (error) { alert('Error: '+error.message); return; }
+  const m = state.members.find(x=>x.name===name);
+  if (m) m.is_admin = false;
+  render();
+}
+
+async function deleteCalendar(keepHistory) {
+  const cal = state.activeCal;
+  if (!cal) return;
+  const msg = keepHistory
+    ? '¿Eliminar el calendario "'+cal.name+'"? Los miembros perderán el acceso pero el historial se conservará en la base de datos.'
+    : '¿Eliminar el calendario "'+cal.name+'" y TODOS sus datos? Esta acción no se puede deshacer.';
+  if (!confirm(msg)) return;
+  if (!keepHistory) {
+    await db.from('cal_visits').delete().eq('calendar_id', cal.id);
+    await db.from('cal_notes').delete().eq('calendar_id', cal.id);
+    await db.from('cal_join_requests').delete().eq('calendar_id', cal.id);
+  }
+  await db.from('cal_members').delete().eq('calendar_id', cal.id);
+  await db.from('calendars').delete().eq('id', cal.id);
+  await leaveCalendar();
 }
 
 async function leaveCalendar() {
@@ -307,6 +342,17 @@ async function leaveCalendar() {
 
 // ── DATA HELPERS ───────────────────────────────────────────────────
 function memberColor(name) { const m=state.members.find(x=>x.name===name); return m?COLORS[m.color_index%COLORS.length]:COLORS[8]; }
+function iAmAdmin() {
+  if (!state.activeCal || !state.myName) return false;
+  if (state.activeCal.created_by === state.myName) return true;
+  const me = state.members.find(m=>m.name===state.myName);
+  return me?.is_admin === true;
+}
+function memberIsAdmin(name) {
+  if (state.activeCal?.created_by === name) return true;
+  const m = state.members.find(x=>x.name===name);
+  return m?.is_admin === true;
+}
 function slotVisitors(date,slot) { return state.visits.filter(v=>v.date===date&&v.slot===slot).map(v=>v.member_name); }
 function dayVisitors(date) { const n=[]; state.visits.filter(v=>v.date===date).forEach(v=>{if(!n.includes(v.member_name))n.push(v.member_name);}); return n; }
 function callVisitors(date) { return state.visits.filter(v=>v.date===date&&v.slot==='call').map(v=>v.member_name); }
@@ -615,7 +661,7 @@ function renderCalHeader() {
       <p style="font-size:10px;color:var(--text3);margin:1px 0 0;font-family:monospace;letter-spacing:1px;">${cal.invite_code}</p></div>
     </div>
     <div style="display:flex;gap:6px;align-items:center;">
-      ${(()=>{const p=state.pendingRequests.filter(r=>r.calendar_id===cal.id);return p.length&&cal.created_by===state.myName?`<button onclick="openModal('requests')" class="btn" style="font-size:12px;padding:5px 10px;background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger-text);font-weight:600;">👋 ${p.length}</button>`:'';})()}
+      ${(()=>{const p=state.pendingRequests.filter(r=>r.calendar_id===cal.id);return p.length&&iAmAdmin()?`<button onclick="openModal('requests')" class="btn" style="font-size:12px;padding:5px 10px;background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger-text);font-weight:600;">👋 ${p.length}</button>`:'';})()}
       <button onclick="openModal('invite')" class="btn" style="font-size:12px;padding:5px 10px;">Invitar</button>
       <button onclick="openModal('editslots')" class="btn" style="font-size:12px;padding:5px 10px;">⚙️</button>
     </div>
@@ -1161,20 +1207,61 @@ function renderDashMember() {
 
 // ── MEMBERS LEGEND ─────────────────────────────────────────────────
 function renderMembersLegend() {
-  const isAdmin = state.activeCal?.created_by === state.myName;
+  const amAdmin = iAmAdmin();
+  const isCreator = state.activeCal?.created_by === state.myName;
+  const calId = state.activeCalId;
   return `<div class="card" style="padding:14px;margin-top:8px;">
-    <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Miembros (${state.members.length})</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:500;color:var(--text2);">Miembros (${state.members.length})</div>
+      ${isCreator ? `<button onclick="openModal('deleteCalendar')" class="btn" style="font-size:11px;padding:3px 8px;color:var(--danger-text);border-color:var(--danger-border);">🗑 Eliminar calendario</button>` : ''}
+    </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;">
       ${state.members.map(m=>{
         const col=COLORS[m.color_index%COLORS.length], isMe=m.name===state.myName;
-        return `<div class="name-badge" style="background:${col.bg};border:${isMe?'1.5px':'0.5px'} solid ${col.dot}50;">
+        const mIsAdmin=memberIsAdmin(m.name);
+        const mIsCreator=state.activeCal?.created_by===m.name;
+        return `<div class="name-badge" style="background:${col.bg};border:${isMe?'1.5px':'0.5px'} solid ${col.dot}50;gap:4px;">
           <span class="dot" style="background:${col.dot};"></span>
-          <span style="font-size:12px;color:${col.text};font-weight:${isMe?'500':'400'};">${m.name}${isMe?' (tú)':''}</span>
-          ${isAdmin&&!isMe?`<button onclick="deleteMember('${state.activeCalId}','${m.name}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--danger-text);padding:0 2px;margin-left:2px;">×</button>`:''}
+          <span style="font-size:12px;color:${col.text};font-weight:${isMe?'500':'400'};">${m.name}${isMe?' (tú)':''}${mIsCreator?' 👑':mIsAdmin?' ⚙️':''}</span>
+          ${amAdmin&&!isMe&&!mIsCreator?`
+            <div style="display:flex;gap:2px;margin-left:2px;">
+              ${!mIsAdmin
+                ? `<button onclick="promoteAdmin('${calId}','${m.name}')" title="Hacer admin" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:0 2px;">⚙️</button>`
+                : `<button onclick="demoteAdmin('${calId}','${m.name}')" title="Quitar admin" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--warn-text);padding:0 2px;">⚙️</button>`
+              }
+              <button onclick="deleteMember('${calId}','${m.name}')" title="Eliminar" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--danger-text);padding:0 2px;">×</button>
+            </div>`
+          :''}
         </div>`;
       }).join('')}
     </div>
-    ${isAdmin?`<p style="font-size:11px;color:var(--text3);margin-top:8px;">Como creador puedes expulsar miembros (×).</p>`:''}
+    ${amAdmin?`<p style="font-size:11px;color:var(--text3);margin-top:8px;">👑 Creador &nbsp;·&nbsp; ⚙️ Admin &nbsp;·&nbsp; Toca ⚙️ para promover/degradar, × para expulsar.</p>`:''}
+  </div>`;
+}
+
+// ── MODAL: DELETE CALENDAR ────────────────────────────────────────
+function renderModalDeleteCalendar() {
+  const cal = state.activeCal;
+  return `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:500;">Eliminar calendario</div>
+        <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text3);">×</button>
+      </div>
+      <div style="padding:14px;background:var(--danger-bg);border:.5px solid var(--danger-border);border-radius:var(--radius-lg);margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:500;color:var(--danger-text);margin-bottom:4px;">⚠️ Vas a eliminar "${cal.name}"</div>
+        <div style="font-size:12px;color:var(--danger-text);opacity:.85;">Todos los miembros perderán el acceso.</div>
+      </div>
+      <div style="font-size:12px;font-weight:500;margin-bottom:10px;">¿Qué hacer con el historial de visitas?</div>
+      <button onclick="deleteCalendar(true);closeModal();" style="width:100%;padding:12px;border-radius:var(--radius-lg);border:.5px solid var(--warn-border);background:var(--warn-bg);color:var(--warn-text);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;margin-bottom:8px;text-align:left;">
+        📦 Conservar historial
+        <div style="font-size:11px;font-weight:400;opacity:.8;margin-top:2px;">El calendario desaparece pero los datos quedan guardados en la base de datos.</div>
+      </button>
+      <button onclick="deleteCalendar(false);closeModal();" style="width:100%;padding:12px;border-radius:var(--radius-lg);border:.5px solid var(--danger-border);background:var(--danger-bg);color:var(--danger-text);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left;">
+        🗑 Borrar todo
+        <div style="font-size:11px;font-weight:400;opacity:.8;margin-top:2px;">Elimina el calendario y todos sus datos para siempre.</div>
+      </button>
+    </div>
   </div>`;
 }
 
@@ -1218,6 +1305,7 @@ function render() {
   if (state.modal==='invite')   modalHtml=renderModalInvite();
   if (state.modal==='editslots') { modalHtml=renderModalEditSlots(); }
   if (state.modal==='requests') modalHtml=renderModalRequests();
+  if (state.modal==='deleteCalendar') modalHtml=renderModalDeleteCalendar();
 
   if (!state.myName) { root.innerHTML=renderNameScreen()+modalHtml; return; }
   if (!state.activeCalId) { root.innerHTML=`<div class="app">${renderHome()}</div>`+modalHtml; return; }

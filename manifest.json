@@ -1,7 +1,7 @@
 {
-  "name": "Visitas a Amama",
-  "short_name": "Amama",
-  "description": "Primos Agirrezabal — organiza las visitas a Amama",
+  "name": "Calendarios familiares",
+  "short_name": "Calendarios",
+  "description": "Coordina visitas y eventos con tu familia",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#eeede8",
